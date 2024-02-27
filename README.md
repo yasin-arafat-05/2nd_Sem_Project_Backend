@@ -40,5 +40,8 @@
 
 ![image](https://github.com/yasin-arafat-05/2nd_Sem_Project_Backend/assets/142558156/b197354e-5041-470e-8273-82998674ec89)
 
-# `Thanks For Visiting`
+<p style="text-align: center;"> 
+  <h1>Thanks For Visiting</h1>
+</p>
+
 
