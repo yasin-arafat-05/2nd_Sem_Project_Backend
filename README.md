@@ -27,3 +27,18 @@
 <br>
 
 # fastapi  `swagger ui`  (Picture):
+
+<br> 
+
+![image](https://github.com/yasin-arafat-05/2nd_Sem_Project_Backend/assets/142558156/eec4a7dc-dc6c-4c87-a52c-e0d6e2aa0d57)
+
+<br>
+
+![image](https://github.com/yasin-arafat-05/2nd_Sem_Project_Backend/assets/142558156/e595df0c-63b1-47ab-a07a-7bde2df169d1)
+
+<br>
+
+![image](https://github.com/yasin-arafat-05/2nd_Sem_Project_Backend/assets/142558156/b197354e-5041-470e-8273-82998674ec89)
+
+# `Thanks For Visiting`
+
