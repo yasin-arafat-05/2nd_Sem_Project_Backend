@@ -23,3 +23,7 @@
 - /bestSelling `(Best selling product -> mainly show all the product cause we don't implement ml)`
 - /all/user `(Get all the user. Helps while developing frontend)`
 - /update/profile `(update user information)`
+  
+<br>
+
+# fastapi  `swagger ui`  (Picture):
