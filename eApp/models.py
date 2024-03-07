@@ -43,6 +43,8 @@ class Product(Base):
     offer_expiration_date = Column(String(200),nullable=False, default=datetime.utcnow().date())
     product_details = Column(Text,nullable=False,default="No Product Details Found")
     product_image = Column(String(200),nullable=False,default="productDefault.jpg")
+    is_favourite = Column(Boolean,nullable=False,default=False)
+    add_to_cart = Column(Boolean,nullable=False,default=False)
     business_id = Column(Integer,ForeignKey('business.id'))
 
     #many to one relationship with (Business)

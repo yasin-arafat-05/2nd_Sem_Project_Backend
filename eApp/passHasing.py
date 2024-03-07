@@ -15,7 +15,7 @@ db  = Annotated[Session,Depends(db_get)]
 
 
 #from .env file get EMAIL,PASSWORD, SECRET KEY
-config_crediential = dotenv_values('.env')
+config_crediential = dotenv_values('eApp/.env')
 
 '''
 schemes: This parameter specifies the list of password hashing schemes to be used. 
@@ -83,6 +83,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 #get the current user: when a user authorized:
 async def get_current_user(token: str = Depends(oauth2_scheme)):
+    print("token: in get current user: "+ token)
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials.Please log in.",

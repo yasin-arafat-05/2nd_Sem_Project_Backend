@@ -8,7 +8,7 @@ import models
 from routes import curdOperation, login,imageUpload,profile,singup,productImageUpload,categories,bestselling,allUser,update_profile
 
 #jinja2Templates -> For showing html in verification.
-template = Jinja2Templates(directory="templates")
+template = Jinja2Templates(directory="eApp/templates")
 
 #from .env file get EMAIL,PASSWORD, SECRET KEY
 config_crediential = dotenv_values('.env')
@@ -81,4 +81,3 @@ app.include_router(update_profile.router)
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app,host="192.168.0.176",port=8000)
-

@@ -21,7 +21,7 @@ def get_db():
 Mount is going to tell the fastapi that in this directory will save static files
 likes images.
 '''
-router.mount("/static", StaticFiles(directory="static"), name="static")
+router.mount("/eApp/static", StaticFiles(directory="eApp/static"), name="static")
 
 @router.post("/product/profile/{id}")
 async def create_upload_file(id:int,file: UploadFile = File(...),user : schemas.User = Depends(passHasing.get_current_user),db: Session=Depends(database.db_get)):
