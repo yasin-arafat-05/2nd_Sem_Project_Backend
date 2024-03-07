@@ -5,7 +5,7 @@ from database import SessionLocal
 import models,schemas
 
 router = APIRouter(
-    tags=["show_to_cart"]
+    tags=["show cart product"]
 )
 
 
