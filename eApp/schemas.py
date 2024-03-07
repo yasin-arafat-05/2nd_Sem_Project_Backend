@@ -26,6 +26,8 @@ class Product(BaseModel):
     offer_expiration_date : str = datetime.utcnow().strftime("%Y-%m-%d")
     product_image : str 
     business_id : int
+    add_to_cart : bool 
+    is_favourite : bool 
     @validator('offer_expiration_date', pre=True, always=True)
     def set_default_offer_expiration_date(cls, value):
         if value == "string" or None:

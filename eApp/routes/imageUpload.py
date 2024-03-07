@@ -19,7 +19,7 @@ router.mount("/eApp/static", StaticFiles(directory="eApp/static"), name="static"
 
 @router.post("/uploadfile/profile")
 async def create_upload_file(file: UploadFile = File(...),user : schemas.User = Depends(passHasing.get_current_user),db: Session=Depends(database.db_get)):
-    PATH = 'static/images'
+    PATH = 'eApp/static/images'
     filename = file.filename
     extention = filename.split('.')[1]
 
@@ -50,7 +50,7 @@ async def create_upload_file(file: UploadFile = File(...),user : schemas.User = 
     )
     owner.logo = token_name
     db.commit()
-    file_url = f"static/images/{token_name}"
+    file_url = f"/eApp/static/images/{token_name}"
     print(token_name)
     return token_name
 
@@ -60,7 +60,7 @@ from fastapi.responses import FileResponse
 @router.get("/images/{filename}")
 async def get_uploaded_image(filename: str):
     # Assuming your images are stored in a directory named "static/images"
-    image_path = f"static/images/{filename}"
+    image_path = f"eApp/static/images/{filename}"
     return FileResponse(image_path)
 
 
