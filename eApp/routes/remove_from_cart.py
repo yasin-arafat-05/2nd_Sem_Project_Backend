@@ -6,7 +6,7 @@ from database import SessionLocal
 import schemas,models
 
 router = APIRouter(
-    tags=["add to cart"]
+    tags=["remove from  cart"]
 )
 
 # db utilites:
@@ -20,13 +20,13 @@ def get_db():
        
        
 
-@router.post('/add/to/cart')
-async def addToCart(id:int,user : schemas.User = Depends(get_current_user),db : Session = Depends(get_db)):
+@router.post('/remove/from/cart')
+async def remove_from_cart(id:int,user : schemas.User = Depends(get_current_user),db : Session = Depends(get_db)):
     product = db.query(models.Product).filter((models.Product.business_id==user) & (models.Product.id==id)).first()
     if not product:
         return "This is not your product."
-    product.add_to_cart = True
+    product.add_to_cart = False
     db.add(product)
     db.commit()
     db.refresh(product)
-    return "Successfully added to cart list"
+    return "Successfully remove from cart list"
