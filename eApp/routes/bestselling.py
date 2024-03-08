@@ -17,6 +17,24 @@ def get_db():
 
 @router.get('/bestSelling')
 async def bestSelling(db: Session = Depends(get_db)):
-    all_data = db.query(models.Product.id,models.Product.name,models.Product.product_image,models.Product.new_price,models.Product.percentage_discount,models.Product.offer_expiration_date,models.Product.product_details).order_by(func.random()).all()
-    data_into_list = [{"id":id,"name":name,"image":image,"newPrice":new_price,"dis":discount,"date":date,"decription":details} for id,name,image,new_price,discount,date,details in all_data]
+    all_data = db.query(models.Product.id,
+                        models.Product.name,
+                        models.Product.product_image,
+                        models.Product.new_price,
+                        models.Product.percentage_discount,
+                        models.Product.offer_expiration_date,
+                        models.Product.is_favourite,
+                        models.Product.add_to_cart,
+                        models.Product.product_details).order_by(func.random()).all()
+    
+    data_into_list = [{"id":id,
+                       "name":name,
+                       "image":image,
+                       "newPrice":new_price,
+                       "dis":discount,
+                       "date":date,
+                       "favourite":is_favourite,
+                       "cart":add_to_cart,
+                       "decription":details} for id,name,image,new_price,discount,date,is_favourite,add_to_cart,details in all_data]
     return {"Categories" : data_into_list}
+

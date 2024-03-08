@@ -6,8 +6,8 @@ from sqlalchemy.orm import Session
 from dotenv import dotenv_values
 import models
 from routes import curdOperation, login,imageUpload,profile,singup,productImageUpload,categories,bestselling,allUser,update_profile
-from routes import fetch_cart_product, add_to_cart,remove_from_cart
-
+from routes import fetch_cart_product, add_to_cart,remove_from_cart,add_to_favourite,remove_from_favourite
+from routes import fetch_fav_product
 
 #jinja2Templates -> For showing html in verification.
 template = Jinja2Templates(directory="eApp/templates")
@@ -85,6 +85,11 @@ app.include_router(add_to_cart.router)
 
 app.include_router(remove_from_cart.router)
 
+app.include_router(add_to_favourite.router)
+
+app.include_router(remove_from_favourite.router)
+
+app.include_router(fetch_fav_product.router)
 
 if __name__ == "__main__":
     import uvicorn
