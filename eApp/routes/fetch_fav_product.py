@@ -34,5 +34,7 @@ async def getFavouriteProduct(user : schemas.Product = Depends(get_current_user)
             "Offer Expiration Date": product.offer_expiration_date,
             "Product Details": product.product_details,
             "Product Image": product.product_image,
+            "Cart": product.add_to_cart,
+            "Favourite": product.is_favourite,
         } for product in product] 
     }

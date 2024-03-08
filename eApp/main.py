@@ -93,4 +93,4 @@ app.include_router(fetch_fav_product.router)
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app",host="192.168.0.176",reload=True,port=8000,)
+    uvicorn.run("main:app",host="192.168.0.121",reload=True,port=8000)
