@@ -49,10 +49,10 @@ async def create_upload_file(id:int,file: UploadFile = File(...),user : schemas.
                 
             
             # Pillow -> to reduce file resolution size etc.
-            img = Image.open(generatePath)
-            img = img.resize(size=(200,200))
-            img.save(generatePath)
-            file.close()
+            # img = Image.open(generatePath)
+            # img = img.resize(size=(200,200))
+            # img.save(generatePath)
+            # file.close()
 
             #user:
             owner = db.query(models.Business).filter(models.Business.owner==user).first()
