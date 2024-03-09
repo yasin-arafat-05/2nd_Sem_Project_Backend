@@ -15,7 +15,7 @@ def get_db():
        yield db
    finally:
        db.close()
-#---------------------------------------Profile Picture Uplod---------------------------------------
+#---------------------------------------product Picture Uplod---------------------------------------
 
 '''
 Mount is going to tell the fastapi that in this directory will save static files
@@ -23,7 +23,7 @@ likes images.
 '''
 router.mount("/eApp/static", StaticFiles(directory="eApp/static"), name="static")
 
-@router.post("/product/profile/{id}")
+@router.post("/product/picture/{id}")
 async def create_upload_file(id:int,file: UploadFile = File(...),user : schemas.User = Depends(passHasing.get_current_user),db: Session=Depends(database.db_get)):
     user_id = db.query(models.Business).filter(models.Business.owner == user).first()
     if user_id:
@@ -33,7 +33,7 @@ async def create_upload_file(id:int,file: UploadFile = File(...),user : schemas.
                                 detail="This is not your product.")
         product = db.query(models.Product).filter(models.Product.id == id).first()
         if product:      
-            PATH = 'static/images'
+            PATH = 'eApp/static/images'
             filename = file.filename
             extention = filename.split('.')[1]
 
@@ -64,7 +64,7 @@ async def create_upload_file(id:int,file: UploadFile = File(...),user : schemas.
                 )
             product.product_image = token_name
             db.commit()
-            file_url = f"static/images/{token_name}"
+            file_url = f"eApp/static/images/{token_name}"
             return FileResponse(path=file_url)
         else:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")

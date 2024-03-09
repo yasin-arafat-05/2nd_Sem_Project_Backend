@@ -36,7 +36,7 @@ async def create_upload_file(file: UploadFile = File(...),user : schemas.User = 
     
     # Pillow -> to reduce file resolution size etc.
     img = Image.open(generatePath)
-    img = img.resize(size=(200,200))
+    img = img.resize(size=(220,240))
     img.save(generatePath)
     await file.close()
 
