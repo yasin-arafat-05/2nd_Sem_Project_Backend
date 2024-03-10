@@ -22,9 +22,9 @@ def get_db():
 
 @router.post('/add/to/favourite')
 async def addToCart(id:int,user : schemas.User = Depends(get_current_user),db : Session = Depends(get_db)):
-    product = db.query(models.Product).filter((models.Product.business_id==user) & (models.Product.id==id)).first()
+    product = db.query(models.Product).filter((models.Product.id==id)).first()
     if not product:
-        return "This is not your product."
+        return "product not exist."
     product.is_favourite = True
     db.add(product)
     db.commit()
