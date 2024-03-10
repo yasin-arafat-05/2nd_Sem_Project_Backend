@@ -21,7 +21,7 @@ def get_db():
        
 
 @router.post('/remove/from/cart')
-async def remove_from_cart(id:int,user : schemas.User = Depends(get_current_user),db : Session = Depends(get_db)):
+async def remove_from_cart(id:int,db : Session = Depends(get_db)):
     product = db.query(models.Product).filter((models.Product.id==id)).first()
     if not product:
         return "Product not exist."

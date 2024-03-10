@@ -6,7 +6,7 @@ from typing import Annotated
 from fastapi import Depends
 
 #database URL 
-SQLALCHEMY_DATABASE_URL = 'sqlite:///eApp/storage.db'
+SQLALCHEMY_DATABASE_URL = 'sqlite:///storage.db'
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL,connect_args={"check_same_thread": False})
 

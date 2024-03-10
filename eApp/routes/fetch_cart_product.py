@@ -21,8 +21,8 @@ def get_db():
 
 
 @router.get('/get/cart/product')
-async def getCartProduct(user : schemas.Product = Depends(get_current_user), db : Session = Depends(get_db)):
-    product = db.query(models.Product).filter((models.Product.business_id==user) & (models.Product.add_to_cart)).all()
+async def getCartProduct(db : Session = Depends(get_db)):
+    product = db.query(models.Product).filter((models.Product.add_to_cart)).all()
     return {
         "User All Product": [{
             "id" : product.id,

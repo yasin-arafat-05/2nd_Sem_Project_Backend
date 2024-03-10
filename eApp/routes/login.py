@@ -34,7 +34,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 
 
 #from .env file get EMAIL,PASSWORD, SECRET KEY
-config_crediential = dotenv_values('eApp/.env')
+config_crediential = dotenv_values('.env')
 
 
 #authenticate user

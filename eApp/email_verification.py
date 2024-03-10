@@ -5,7 +5,7 @@ from dotenv import dotenv_values
 import models
 import jwt
 
-config_credentials = dotenv_values("eApp/.env")
+config_credentials = dotenv_values(".env")
 
 class EmailSchema(BaseModel):
     email: List[EmailStr]
@@ -47,7 +47,7 @@ async def send_email(email: EmailSchema, instance: models.User):
 
                 <a style="margin-top : 1rem; padding: 1rem;border-radius: 0.5rem;
                 font-size:1rem;text-direction: none;background: #0275d8;color:white;"
-                href="http://192.168.0.176:8000/verification/?token={token}">
+                href="http://127.0.0.1:8000/verification/?token={token}">
                 Verify your email
                 </a>
             </div>

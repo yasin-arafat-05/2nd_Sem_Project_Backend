@@ -21,8 +21,8 @@ def get_db():
 
 
 @router.get('/get/fav/product')
-async def getFavouriteProduct(user : schemas.Product = Depends(get_current_user), db : Session = Depends(get_db)):
-    product = db.query(models.Product).filter((models.Product.business_id==user) & (models.Product.is_favourite)).all()
+async def getFavouriteProduct( db : Session = Depends(get_db)):
+    product = db.query(models.Product).filter((models.Product.is_favourite)).all()
     return {
         "User All Product": [{
             "id" : product.id,

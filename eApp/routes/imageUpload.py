@@ -15,11 +15,11 @@ router = APIRouter(tags=['Image-Upload'])
 Mount is going to tell the fastapi that in this directory will save static files
 likes images.
 '''
-router.mount("/eApp/static", StaticFiles(directory="eApp/static"), name="static")
+router.mount("/static", StaticFiles(directory="static"), name="static")
 
 @router.post("/uploadfile/profile")
 async def create_upload_file(file: UploadFile = File(...),user : schemas.User = Depends(passHasing.get_current_user),db: Session=Depends(database.db_get)):
-    PATH = 'eApp/static/images'
+    PATH = 'static/images'
     filename = file.filename
     extention = filename.split('.')[1]
 
@@ -36,7 +36,7 @@ async def create_upload_file(file: UploadFile = File(...),user : schemas.User = 
     
     # Pillow -> to reduce file resolution size etc.
     img = Image.open(generatePath)
-    img = img.resize(size=(220,240))
+    img = img.resize(size=(200,200))
     img.save(generatePath)
     await file.close()
 
@@ -50,7 +50,7 @@ async def create_upload_file(file: UploadFile = File(...),user : schemas.User = 
     )
     owner.logo = token_name
     db.commit()
-    file_url = f"/eApp/static/images/{token_name}"
+    file_url = f"static/images/{token_name}"
     print(token_name)
     return token_name
 
@@ -60,7 +60,5 @@ from fastapi.responses import FileResponse
 @router.get("/images/{filename}")
 async def get_uploaded_image(filename: str):
     # Assuming your images are stored in a directory named "static/images"
-    image_path = f"eApp/static/images/{filename}"
+    image_path = f"static/images/{filename}"
     return FileResponse(image_path)
-
-

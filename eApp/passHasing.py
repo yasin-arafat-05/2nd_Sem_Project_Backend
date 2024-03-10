@@ -15,7 +15,7 @@ db  = Annotated[Session,Depends(db_get)]
 
 
 #from .env file get EMAIL,PASSWORD, SECRET KEY
-config_crediential = dotenv_values('eApp/.env')
+config_crediential = dotenv_values('.env')
 
 '''
 schemes: This parameter specifies the list of password hashing schemes to be used. 
