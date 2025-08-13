@@ -1,13 +1,13 @@
-from passHasing import get_password_hash, very_token,get_current_user
+from eApp.passHasing import get_password_hash, very_token,get_current_user
 from fastapi import FastAPI, status, HTTPException, Request, Query,Depends
-from database import engine,SessionLocal
+from eApp.database import engine,SessionLocal
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from dotenv import dotenv_values
-import models
-from routes import curdOperation, login,imageUpload,profile,singup,productImageUpload,categories,bestselling,allUser,update_profile
-from routes import fetch_cart_product, add_to_cart,remove_from_cart,add_to_favourite,remove_from_favourite
-from routes import fetch_fav_product
+from eApp import models
+from eApp.routes import curdOperation, login,imageUpload,profile,singup,productImageUpload,categories,bestselling,allUser,update_profile
+from eApp.routes import fetch_cart_product, add_to_cart,remove_from_cart,add_to_favourite,remove_from_favourite
+from eApp.routes import fetch_fav_product
 
 #jinja2Templates -> For showing html in verification.
 template = Jinja2Templates(directory="eApp/templates")

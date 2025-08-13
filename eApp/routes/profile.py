@@ -1,8 +1,8 @@
-from fastapi import APIRouter,Depends
+from eApp import models,schemas
 from sqlalchemy.orm import Session
-from database import SessionLocal
-from passHasing import get_current_user
-import models,schemas
+from fastapi import APIRouter,Depends
+from eApp.database import SessionLocal
+from eApp.passHasing import get_current_user
 
 router = APIRouter(
     tags=['Profile']

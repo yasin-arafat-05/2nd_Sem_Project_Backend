@@ -1,8 +1,8 @@
+from eApp import models,schemas
+from eApp.database import db_dependency
+from eApp.passHasing import get_password_hash
 from fastapi import status,APIRouter,HTTPException
-from email_verification import EmailSchema,send_email
-from passHasing import get_password_hash
-from database import db_dependency
-import models,schemas
+from eApp.email_verification import EmailSchema,send_email
 
 
 router = APIRouter(tags=['SignUP'])

@@ -1,4 +1,4 @@
-from database import Base,db_dependency
+from eApp.database import Base,db_dependency
 from sqlalchemy.orm import relationship
 from sqlalchemy import Column,Integer,Boolean,ForeignKey,String,Text,Numeric,DateTime
 from sqlalchemy.sql import func

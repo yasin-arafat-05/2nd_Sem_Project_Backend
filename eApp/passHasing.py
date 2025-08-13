@@ -3,11 +3,11 @@ from passlib.context import CryptContext
 from fastapi import HTTPException,status
 from sqlalchemy.orm import Session
 from dotenv import dotenv_values
-from database import db_get
+from eApp.database import db_get
 from typing import Annotated
 from fastapi import Depends
 from jose import JWTError,jwt 
-import models
+from eApp import models
 
 
 #create db dependency

@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Depends
-from database import SessionLocal
-from sqlalchemy.orm import Session
+from eApp import models
 from sqlalchemy import func
-import models
+from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends
+from eApp.database import SessionLocal
 
 router = APIRouter(tags=["Categories"])
 

@@ -1,10 +1,10 @@
-from fastapi import APIRouter,File,UploadFile,Depends,HTTPException,status
-from sqlalchemy.orm import Session
-import schemas,models,database,passHasing
-from PIL import Image
 import secrets # python-inbuild to generate hex token -> use to store our image files
+from PIL import Image
+from sqlalchemy.orm import Session
+from eApp import schemas,models,database,passHasing
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi import APIRouter,File,UploadFile,Depends,HTTPException,status
 
 router = APIRouter(tags=['Image-Upload'])
 
@@ -15,7 +15,7 @@ router = APIRouter(tags=['Image-Upload'])
 Mount is going to tell the fastapi that in this directory will save static files
 likes images.
 '''
-router.mount("/static", StaticFiles(directory="static"), name="static")
+router.mount("/static", StaticFiles(directory="eApp/static"), name="static")
 
 @router.post("/uploadfile/profile")
 async def create_upload_file(file: UploadFile = File(...),user : schemas.User = Depends(passHasing.get_current_user),db: Session=Depends(database.db_get)):

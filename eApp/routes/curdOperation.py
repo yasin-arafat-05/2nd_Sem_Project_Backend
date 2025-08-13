@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException,status
 from sqlalchemy.orm import Session
-from database import SessionLocal
-from passHasing import get_current_user
-import models, schemas
+from eApp.database import SessionLocal
+from eApp.passHasing import get_current_user
+from eApp import models, schemas
 
 router = APIRouter(tags=["CRUD->Create,Read,Update,Delete"])
 

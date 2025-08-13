@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-import database,models,schemas
+from eApp import database,models,schemas
 
 app = APIRouter(tags=['all user'])
 

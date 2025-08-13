@@ -1,9 +1,9 @@
 
-from fastapi import APIRouter,Depends
+from eApp import schemas,models
 from sqlalchemy.orm import Session
-from passHasing import get_current_user
-from database import SessionLocal
-import schemas,models
+from fastapi import APIRouter,Depends
+from eApp.database import SessionLocal
+from eApp.passHasing import get_current_user
 
 router = APIRouter(
     tags=["Remove From Favourite"]

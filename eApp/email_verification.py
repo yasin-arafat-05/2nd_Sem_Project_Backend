@@ -1,11 +1,11 @@
-from typing import List
-from fastapi_mail import ConnectionConfig, FastMail, MessageSchema, MessageType
-from pydantic import BaseModel, EmailStr
-from dotenv import dotenv_values
-import models
 import jwt
+from eApp import models
+from typing import List
+from dotenv import dotenv_values
+from pydantic import BaseModel, EmailStr
+from fastapi_mail import ConnectionConfig, FastMail, MessageSchema, MessageType
 
-config_credentials = dotenv_values(".env")
+config_credentials = dotenv_values("eApp/.env")
 
 class EmailSchema(BaseModel):
     email: List[EmailStr]

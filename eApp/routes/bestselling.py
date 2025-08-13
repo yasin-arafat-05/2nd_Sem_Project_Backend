@@ -1,8 +1,8 @@
-from fastapi import APIRouter,Depends
-from sqlalchemy.orm import Session
+from eApp import models
 from sqlalchemy import func
-from database import SessionLocal
-import models
+from sqlalchemy.orm import Session
+from eApp.database import SessionLocal
+from fastapi import APIRouter,Depends
 
 router = APIRouter(
     tags=['BestSelling']
