@@ -34,7 +34,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 
 
 #from .env file get EMAIL,PASSWORD, SECRET KEY
-config_crediential = dotenv_values('.env')
+config_crediential = dotenv_values('eApp/.env')
 
 
 #authenticate user
@@ -52,9 +52,12 @@ def authenticate_user(username: str, password: str):
 def create_access_token(data: dict, expires_delta: timedelta = None):
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=180)
+        expire = datetime.now() + timedelta(minutes=180)
     to_encode.update({"exp": expire})
+    print(config_crediential)
     encoded_jwt = jwt.encode(to_encode,config_crediential['SECRET'], algorithm='HS256')
     return encoded_jwt
+
+

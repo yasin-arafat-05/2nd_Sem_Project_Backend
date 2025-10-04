@@ -1,5 +1,6 @@
 from eApp.passHasing import get_password_hash, very_token,get_current_user
 from fastapi import FastAPI, status, HTTPException, Request, Query,Depends
+from fastapi.middleware.cors import CORSMiddleware
 from eApp.database import engine,SessionLocal
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -18,6 +19,13 @@ config_crediential = dotenv_values('.env')
 #Instance of Fastapi
 app = FastAPI()
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], 
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 models.Base.metadata.create_all(engine)

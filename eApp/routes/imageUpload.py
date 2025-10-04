@@ -60,5 +60,5 @@ from fastapi.responses import FileResponse
 @router.get("/images/{filename}")
 async def get_uploaded_image(filename: str):
     # Assuming your images are stored in a directory named "static/images"
-    image_path = f"static/images/{filename}"
+    image_path = f"eApp/static/images/{filename}"
     return FileResponse(image_path)

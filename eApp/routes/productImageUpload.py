@@ -38,7 +38,7 @@ async def create_product_picture(id:int,file: UploadFile = File(...),user : sche
                                 detail="This is not your product.")
         product = db.query(models.Product).filter(models.Product.id == id).first()
         if product:      
-            PATH = 'static/images'
+            PATH = 'eApp/static/images'
             filename = file.filename
             extention = filename.split('.')[1]
 
