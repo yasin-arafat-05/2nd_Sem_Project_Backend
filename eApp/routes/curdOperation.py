@@ -1,54 +1,50 @@
-from fastapi import APIRouter, Depends, HTTPException,status
-from sqlalchemy.orm import Session
-from eApp.database import SessionLocal
-from eApp.passHasing import get_current_user
+import uuid
 from eApp import models, schemas
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from eApp.database import get_db
+from eApp.passHasing import get_current_user
+from fastapi import APIRouter, Depends, HTTPException,status
 
 router = APIRouter(tags=["CRUD->Create,Read,Update,Delete"])
 
-# db dependency
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
 # ------------------------------------------- Add New Product ------------------------------
 @router.post("/upload/product")
-async def add_new_product(
-    product: schemas.UploadProduct,
-    user: schemas.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    product_data = product.dict(exclude_unset=True)
-    to_upload_discount : schemas.Product
-    # Retrieve the current user from the database
-    current_user = db.query(models.User).filter(models.User.id == user).first()
-    # Check if the user has a business
-    if current_user.is_verified:
-        # If the user has a business, associate the product with that business
+async def add_new_product(product: schemas.UploadProduct,user: schemas.User = Depends(get_current_user),db: AsyncSession = Depends(get_db)):
+    product_data = product.model_dump(exclude_unset=True)
+    result = await db.execute(select(models.User).where(models.User.id == user.id))
+    current_user = result.scalar_one_or_none()
+    if current_user and current_user.is_verified:
         product_data['business_id'] = current_user.id
         new_product = models.Product(**product_data)
         new_product.percentage_discount = ((new_product.original_price - new_product.new_price) / new_product.original_price) * 100
+        
+        # Generate unique chatbot_product_id for LLM integration
+        new_product.chatbot_product_id = f"PROD-{uuid.uuid4().hex[:12].upper()}"
         db.add(new_product)
-        db.commit()
-        db.refresh(new_product)
-        return "Product Uploaded Successfully."
+        await db.commit()
+        await db.refresh(new_product)
+        return {
+            "message": "Product Uploaded Successfully.",
+            "product_id": new_product.id,
+            "chatbot_product_id": new_product.chatbot_product_id
+        }
     else:
         return {"status": "First verify your account."}
 
 #-----------------------------------Get All the Product information-------------------------------
 
 @router.get("/get/product")
-async def get_all_product(db: Session = Depends(get_db)):
-    all_product = db.query(models.Product).all()
+async def get_all_product(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(models.Product))
+    all_product = result.scalars().all()
     return all_product
 
 #------------------------------Get A the Product information---------------------------------
 @router.get("/get/single/product/{id}")
-async def get_a_single_product(id: int, db: Session = Depends(get_db)):
-    product_with_business = db.query(models.Product).filter(models.Product.id == id).first()
+async def get_a_single_product(id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(models.Product).where(models.Product.id == id))
+    product_with_business = result.scalar_one_or_none()
 
     if product_with_business:
         return {
@@ -63,28 +59,41 @@ async def get_a_single_product(id: int, db: Session = Depends(get_db)):
 
 #--------------------------------------Delete A the Product --------------------------
 @router.delete("/delete/product/{id}")
-async def delete_product(product_id: int,user: schemas.User = Depends(get_current_user), db: Session = Depends(get_db)): 
-    product_valid = db.query(models.Product).filter(models.Product.business_id==user).first()
-    print(product_id)
-    if not product_valid:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                                detail="This is not your product.")
+async def delete_product(id: int, user: schemas.User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     try:
-        product =  db.query(models.Product).filter(models.Product.id==product_id).first()
-        db.delete(product)
-        db.commit()
+        # Query for the specific product owned by the user
+        result = await db.execute(
+            select(models.Product).where(
+                models.Product.id == id,
+                models.Product.business_id == user.id
+            )
+        )
+        product = result.scalar_one_or_none()
+        
+        if not product:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,  # Or 401 if you prefer unauthorized
+                detail="Product not found or not owned by you"
+            )
+        
+        await db.delete(product)
+        await db.commit()
         return {"message": "Product deleted successfully"}
+    
     except Exception as e:
-        print(e)
-
+        await db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to delete product")
+    
 #--------------------------------------Update A the Product --------------------------
 @router.put("/update/product/{id}")
-async def update_product(id: int, update: schemas.UpdatedProduct, db: Session = Depends(get_db), user: schemas.User = Depends(get_current_user)):
-    product_valid = db.query(models.Product).filter(models.Product.business_id == user).first()
+async def update_product(id: int, update: schemas.UpdatedProduct, db: AsyncSession = Depends(get_db), user: schemas.User = Depends(get_current_user)):
+    result = await db.execute(select(models.Product).where(models.Product.business_id == user))
+    product_valid = result.scalar_one_or_none()
     if not product_valid:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                              detail="This is not your product.")
-    product = db.query(models.Product).filter(models.Product.id == id).first()
+    result = await db.execute(select(models.Product).where(models.Product.id == id))
+    product = result.scalar_one_or_none()
     if product:
         product.name = update.name
         product.category = update.category
@@ -93,7 +102,7 @@ async def update_product(id: int, update: schemas.UpdatedProduct, db: Session = 
         product.product_details = update.product_details
         product.offer_expiration_date = update.offer_expiration_date
         product.percentage_discount = ((product.original_price - product.new_price) / product.original_price) * 100
-        db.commit()
+        await db.commit()
         return {"message": "Product Updated Successfully"}
     else:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")

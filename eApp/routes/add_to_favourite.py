@@ -1,32 +1,26 @@
 
-from eApp import schemas,models
-from sqlalchemy.orm import Session
-from fastapi import APIRouter,Depends
-from eApp.database import SessionLocal
-from eApp.passHasing import get_current_user
+from eApp import models
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Depends, HTTPException, status
+from eApp.database import get_db
 
 router = APIRouter(
     tags=["add to favourite list"]
 )
 
-# db utilites:
-
-def get_db():
-   db = SessionLocal()
-   try:
-       yield db
-   finally:
-       db.close()
-       
-       
 
 @router.post('/add/to/favourite')
-async def addToCart(id:int,db : Session = Depends(get_db)):
-    product = db.query(models.Product).filter((models.Product.id==id)).first()
+async def add_to_favourite(id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(models.Product).where(models.Product.id == id))
+    product = result.scalar_one_or_none()
     if not product:
-        return "product not exist."
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Product not found."
+        )
     product.is_favourite = True
     db.add(product)
-    db.commit()
-    db.refresh(product)
-    return "Successfully added to favourite list"
+    await db.commit()
+    await db.refresh(product)
+    return {"detail": "Successfully added to favourite list"}

@@ -1,7 +1,9 @@
 import secrets # python-inbuild to generate hex token -> use to store our image files
 from PIL import Image
-from sqlalchemy.orm import Session
-from eApp import schemas,models,database,passHasing
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from eApp import schemas,models,passHasing
+from eApp.database import get_db
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi import APIRouter,File,UploadFile,Depends,HTTPException,status
@@ -18,8 +20,12 @@ likes images.
 router.mount("/static", StaticFiles(directory="eApp/static"), name="static")
 
 @router.post("/uploadfile/profile")
-async def create_upload_file(file: UploadFile = File(...),user : schemas.User = Depends(passHasing.get_current_user),db: Session=Depends(database.db_get)):
-    PATH = 'static/images'
+async def create_upload_file(
+    file: UploadFile = File(...),
+    user : schemas.User = Depends(passHasing.get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    PATH = 'eApp/static/images'
     filename = file.filename
     extention = filename.split('.')[1]
 
@@ -41,7 +47,8 @@ async def create_upload_file(file: UploadFile = File(...),user : schemas.User = 
     await file.close()
 
     #user:
-    owner = db.query(models.Business).filter(models.Business.owner==user).first()
+    result = await db.execute(select(models.Business).where(models.Business.owner==user))
+    owner = result.scalar_one_or_none()
     if not owner:
        raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -49,9 +56,8 @@ async def create_upload_file(file: UploadFile = File(...),user : schemas.User = 
         headers={"WWW-Authenticate": "Bearer"}
     )
     owner.logo = token_name
-    db.commit()
+    await db.commit()
     file_url = f"static/images/{token_name}"
-    print(token_name)
     return token_name
 
 #--------------------------get the image-------------------------

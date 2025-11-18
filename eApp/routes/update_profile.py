@@ -1,17 +1,16 @@
 from pydantic import BaseModel
-from eApp import schemas,models
-from eApp.database import db_get
-from sqlalchemy.orm import Session
+from eApp import schemas, models
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from eApp.passHasing import get_current_user
-from fastapi import APIRouter,Depends,HTTPException,status
+from eApp.database import get_db
+from fastapi import APIRouter, Depends, HTTPException, status
 
 
 router = APIRouter(tags=["upload profile"])
 
 
-# for pydandic model for request data: 
-
-class uploadProfile(BaseModel):
+class UploadProfile(BaseModel):
     business_name : str 
     city : str 
     region : str 
@@ -19,9 +18,14 @@ class uploadProfile(BaseModel):
     
 
 @router.put("/update/profile")
-async def Upload_profile(update: uploadProfile ,user : schemas.User =Depends(get_current_user),db : Session = Depends(db_get)):
+async def upload_profile(
+    update: UploadProfile,
+    user: schemas.User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
     try:
-        business_profile = db.query(models.Business).filter(models.Business.owner==user).first()
+        result = await db.execute(select(models.Business).where(models.Business.owner==user))
+        business_profile = result.scalar_one_or_none()
         if not business_profile:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                                 detail="User is not Authenticate")
@@ -30,10 +34,8 @@ async def Upload_profile(update: uploadProfile ,user : schemas.User =Depends(get
         business_profile.region = update.region
         business_profile.business_name = update.business_name
         business_profile.business_description = update.business_description
-        db.commit()
-        return "Profile Upadate Successfully"
+        await db.commit()
+        return {"detail": "Profile Update Successfully"}
     except Exception as e:
-        print(e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             detail="Profile update failed")
-    

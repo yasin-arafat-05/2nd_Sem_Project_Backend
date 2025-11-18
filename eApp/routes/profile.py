@@ -1,7 +1,8 @@
-from eApp import models,schemas
-from sqlalchemy.orm import Session
-from fastapi import APIRouter,Depends
-from eApp.database import SessionLocal
+from eApp import models, schemas
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Depends, HTTPException, status
+from eApp.database import get_db
 from eApp.passHasing import get_current_user
 
 router = APIRouter(
@@ -9,23 +10,21 @@ router = APIRouter(
 )
 
 
-#db dependency
-def get_db():
-   db = SessionLocal()
-   try:
-       yield db
-   finally:
-       db.close()
-
-
-#------------------------------------ User login information ----------------------------------------
-       
-
 @router.post("/user/me")
-async def user_login(user: schemas.User = Depends(get_current_user), db: Session = Depends(get_db)):
-    current_user = db.query(models.User).filter(models.User.id == user).first()
-    business = db.query(models.Business).filter(models.Business.owner==current_user.id).first()
-    product_all =  db.query(models.Product).filter(models.Product.business_id==business.owner).all()
+async def user_login(user: schemas.User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(models.User).where(models.User.id == user))
+    current_user = result.scalar_one_or_none()
+    if not current_user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    result = await db.execute(select(models.Business).where(models.Business.owner == current_user.id))
+    business = result.scalar_one_or_none()
+    if not business:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Business not found")
+
+    result = await db.execute(select(models.Product).where(models.Product.business_id == business.owner))
+    product_all = result.scalars().all()
+
     return {
         "Current User Information": {
             "User Name": current_user.username,
@@ -41,6 +40,7 @@ async def user_login(user: schemas.User = Depends(get_current_user), db: Session
         },
         "User All Product": [{
             "id" : product.id,
+            "chatbot_product_id": product.chatbot_product_id,  # ID for LLM/chatbot integration
             "Product Name": product.name,
             "Category": product.category,
             "Original Price": float(product.original_price),

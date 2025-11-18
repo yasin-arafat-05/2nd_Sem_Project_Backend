@@ -1,32 +1,26 @@
 
-from eApp import schemas,models
-from sqlalchemy.orm import Session
-from fastapi import APIRouter,Depends
-from eApp.database import SessionLocal
-from eApp.passHasing import get_current_user
+from eApp import models
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Depends, HTTPException, status
+from eApp.database import get_db
 
 router = APIRouter(
     tags=["remove from  cart"]
 )
 
-# db utilites:
-
-def get_db():
-   db = SessionLocal()
-   try:
-       yield db
-   finally:
-       db.close()
-       
-       
 
 @router.post('/remove/from/cart')
-async def remove_from_cart(id:int,db : Session = Depends(get_db)):
-    product = db.query(models.Product).filter((models.Product.id==id)).first()
+async def remove_from_cart(id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(models.Product).where(models.Product.id == id))
+    product = result.scalar_one_or_none()
     if not product:
-        return "Product not exist."
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Product not exist."
+        )
     product.add_to_cart = False
     db.add(product)
-    db.commit()
-    db.refresh(product)
-    return "Successfully remove from cart list"
+    await db.commit()
+    await db.refresh(product)
+    return {"detail": "Successfully removed from cart list"}

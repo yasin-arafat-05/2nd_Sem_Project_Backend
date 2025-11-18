@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from typing import Optional
 from pydantic import BaseModel, validator
 from datetime import datetime
 ##_______________________Creating Purpouse____________________##
@@ -6,6 +6,8 @@ class User(BaseModel):
     username : str 
     email : str
     password : str 
+  
+    
     
 
 class Business(BaseModel):
@@ -72,3 +74,50 @@ class UpdatedProduct(BaseModel):
         return value
 
 
+class InputMessage(BaseModel):
+    message: str
+    checkpoint_id: Optional[str] = None
+
+
+
+
+
+#<--------------- app/schema/social_media_schema.py ------------------>
+
+class SocialMediaTokenBase(BaseModel):
+    facebook: Optional[str] = None
+    instagram: Optional[str] = None
+    linkedin: Optional[str] = None
+    expires_at: Optional[datetime] = None
+class TokenCreate(SocialMediaTokenBase):
+    pass
+
+
+class TokenUpdate(SocialMediaTokenBase):
+    pass
+
+
+class TokenResponse(SocialMediaTokenBase):
+    id: int
+    
+    class Config:
+        from_attributes = True
+        
+
+
+
+class FacebookPostBase(BaseModel):
+    text: str
+
+
+class FacebookTextPost(BaseModel):
+    generate_content : str 
+    current_user_id : int 
+
+
+class FacebookPhotoPost(FacebookPostBase):
+    photo_url: str
+    
+
+class FacebookVideoPost(FacebookPostBase):
+    video_url: str

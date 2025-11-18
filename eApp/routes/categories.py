@@ -1,30 +1,26 @@
 from eApp import models
-from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import APIRouter, Depends
-from eApp.database import SessionLocal
+from eApp.database import get_db
 
 router = APIRouter(tags=["Categories"])
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 @router.get('/Categories')
-async def get_categories(db: Session = Depends(get_db)):
-    # Get distinct categories and their associated images
+async def get_categories(db: AsyncSession = Depends(get_db)):
     subquery = (
-        db.query(models.Product.category, func.min(models.Product.product_image).label("product_image"))
+        select(
+            models.Product.category,
+            func.min(models.Product.product_image).label("product_image"),
+        )
         .group_by(models.Product.category)
         .subquery()
     )
 
-    unique_categories = db.query(subquery).all()
+    result = await db.execute(select(subquery.c.category, subquery.c.product_image))
+    unique_categories = result.all()
 
-    # Convert the categories into a list of dictionaries
     category_info = [{"category": category, "image": image} for category, image in unique_categories]
 
     return {

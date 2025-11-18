@@ -1,23 +1,25 @@
-from fastapi import APIRouter,Depends,HTTPException,status
-from eApp.database import SessionLocal
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from eApp.database import get_db
 from eApp.passHasing import verify_password
-from datetime import timedelta,datetime
+from datetime import timedelta, datetime
 from jose import jwt
-from typing import Annotated
-from sqlalchemy.orm import Session
+from eApp.config import CONFIG
 from dotenv import dotenv_values
-from eApp import schemas,models
-
+from eApp import schemas, models
 
 router = APIRouter(tags=['login'])
 
 
 # Token generation endpoint/login endpoint
 @router.post("/token", response_model=schemas.Token)
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
-    user = authenticate_user(form_data.username, form_data.password)
-    print(user)
+async def login_for_access_token(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: AsyncSession = Depends(get_db),
+):
+    user = await authenticate_user(form_data.username, form_data.password, db)
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -28,8 +30,6 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-
-
 #-------------------------------Necessary function------------------------------------
 
 
@@ -38,9 +38,9 @@ config_crediential = dotenv_values('eApp/.env')
 
 
 #authenticate user
-def authenticate_user(username: str, password: str):
-    db = SessionLocal()
-    user = db.query(models.User).filter(models.User.email == username).first()
+async def authenticate_user(username: str, password: str, db: AsyncSession):
+    result = await db.execute(select(models.User).where(models.User.email == username))
+    user = result.scalar_one_or_none()
     if not user:
         return None
     if not verify_password(password, user.password):
@@ -57,7 +57,7 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
         expire = datetime.now() + timedelta(minutes=180)
     to_encode.update({"exp": expire})
     print(config_crediential)
-    encoded_jwt = jwt.encode(to_encode,config_crediential['SECRET'], algorithm='HS256')
+    encoded_jwt = jwt.encode(to_encode,CONFIG.SECRET_KEY, algorithm=CONFIG.ALGORITHM)
     return encoded_jwt
 
 

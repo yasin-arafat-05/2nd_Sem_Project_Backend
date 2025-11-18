@@ -1,6 +1,7 @@
 import jwt
 from eApp import models
 from typing import List
+from eApp.config import CONFIG
 from dotenv import dotenv_values
 from pydantic import BaseModel, EmailStr
 from fastapi_mail import ConnectionConfig, FastMail, MessageSchema, MessageType
@@ -11,11 +12,11 @@ class EmailSchema(BaseModel):
     email: List[EmailStr]
 
 conf = ConnectionConfig(
-    MAIL_USERNAME = config_credentials["EMAIL"],
-    MAIL_PASSWORD = "emeo yzdy zuuj vtlw",
-    MAIL_FROM = config_credentials["EMAIL"],
-    MAIL_PORT = 465,
-    MAIL_SERVER = "smtp.gmail.com",
+    MAIL_USERNAME =CONFIG.MAIL_USERNAME,
+    MAIL_PASSWORD =CONFIG.MAIL_PASSWORD,
+    MAIL_FROM =CONFIG.MAIL_FROM,
+    MAIL_PORT = CONFIG.MAIL_PORT,
+    MAIL_SERVER = CONFIG.MAIL_SERVER,
     MAIL_STARTTLS = False,
     MAIL_SSL_TLS = True,
     USE_CREDENTIALS = True,
@@ -27,7 +28,7 @@ async def send_email(email: EmailSchema, instance: models.User):
         "id": instance.id,
         "username": instance.username
     }
-    token = jwt.encode(token_data, config_credentials["SECRET"], algorithm='HS256')
+    token = jwt.encode(token_data,key=CONFIG.SECRET_KEY,algorithm=CONFIG.ALGORITHM)
 
     # Extracting the list of emails from the EmailSchema object
     email_list = tuple(email.email)
@@ -67,3 +68,23 @@ async def send_email(email: EmailSchema, instance: models.User):
     fm = FastMail(conf)
     
     await fm.send_message(message)
+
+
+async def send_html_email(recipients: List[str], subject: str, html_body: str):
+    """Send HTML email to recipients"""
+    message = MessageSchema(
+        subject=subject,
+        recipients=recipients,
+        body=html_body,
+        subtype=MessageType.html
+    )
+    
+    fm = FastMail(conf)
+    await fm.send_message(message)
+
+
+async def send_subscription_expired_email(email: str, username: str, expires_at: str):
+    """Send subscription expired email"""
+    from eApp.internal.html_templates import payment_subscription_expired
+    html = payment_subscription_expired(expires_at, username)
+    await send_html_email([email], "Your Subscription has Expired", html)

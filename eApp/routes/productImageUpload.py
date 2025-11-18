@@ -1,20 +1,14 @@
 import secrets # python-inbuild to generate hex token -> use to store our image files
-from PIL import Image
-from sqlalchemy.orm import Session
-from eApp.database import SessionLocal
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from eApp import schemas,models,database,passHasing
+from eApp import schemas,models,passHasing
+from eApp.database import get_db
 from fastapi import APIRouter,File,UploadFile,Depends,HTTPException,status
 
 router = APIRouter(tags=['Image-Upload'])
 
-def get_db():
-   db = SessionLocal()
-   try:
-       yield db
-   finally:
-       db.close()
 #---------------------------------------product Picture Uplod---------------------------------------
 
 '''
@@ -24,60 +18,58 @@ likes images.
 router.mount("/static", StaticFiles(directory="eApp/static"), name="static")
 
 @router.post("/product/picture/{id}")
-async def create_product_picture(id:int,file: UploadFile = File(...),user : schemas.User = Depends(passHasing.get_current_user),db: Session=Depends(database.db_get)):
-    user_id = db.query(models.Business).filter(models.Business.owner == user).first()
-    print(models.Product.business_id)
-    if user_id:
-        print(user)
-        print(user_id.id)
-        print(models.Product.business_id)
-        product_valid = db.query(models.Product).filter(models.Product.business_id == user_id.owner).first()
-        
-        if not product_valid:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                                detail="This is not your product.")
-        product = db.query(models.Product).filter(models.Product.id == id).first()
-        if product:      
-            PATH = 'eApp/static/images'
-            filename = file.filename
-            extention = filename.split('.')[1]
-
-            if extention not in ['png','jpg','jpeg']:
-                return {"status" : 'File extention should in .png .jpg and .jpeg'}
-            token_name = secrets.token_hex(10)+'.'+extention
-            generatePath = f"{PATH}/{token_name}"
-            file_content = await file.read()
-
-            # wb -> write in binary 
-            with open(generatePath,"wb") as fille:
-                fille.write(file_content)
-                
-            
-            # Pillow -> to reduce file resolution size etc.
-            # img = Image.open(generatePath)
-            # img = img.resize(size=(200,200))
-            # img.save(generatePath)
-            # file.close()
-
-            #user:
-            owner = db.query(models.Business).filter(models.Business.owner==user).first()
-            if not owner:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Not Authenticated User",
-                    headers={"WWW-Authenticate": "Bearer"}
-                )
-            product.product_image = token_name
-            db.commit()
-            file_url = f"static/images/{token_name}"
-            return FileResponse(path=file_url)
-        else:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
-    else:
+async def create_product_picture(
+    id:int,
+    file: UploadFile = File(...),
+    user : schemas.User = Depends(passHasing.get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(models.Business).where(models.Business.owner == user))
+    user_business = result.scalar_one_or_none()
+    if not user_business:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not Authorized To Perform This Task."
         )
+
+    result = await db.execute(select(models.Product).where(models.Product.business_id == user_business.owner))
+    product_valid = result.scalar_one_or_none()
+    if not product_valid:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="This is not your product."
+        )
+
+    result = await db.execute(select(models.Product).where(models.Product.id == id))
+    product = result.scalar_one_or_none()
+    if not product:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
+
+    PATH = 'eApp/static/images'
+    filename = file.filename
+    extention = filename.split('.')[1]
+
+    if extention not in ['png','jpg','jpeg']:
+        return {"status" : 'File extention should in .png .jpg and .jpeg'}
+    token_name = secrets.token_hex(10)+'.'+extention
+    generatePath = f"{PATH}/{token_name}"
+    file_content = await file.read()
+
+    # wb -> write in binary 
+    with open(generatePath,"wb") as fille:
+        fille.write(file_content)
+
+    owner = user_business
+    if not owner:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not Authenticated User",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    product.product_image = token_name
+    await db.commit()
+    file_url = f"static/images/{token_name}"
+    return FileResponse(path=file_url)
 
 
 # router.mount("/static", StaticFiles(directory="static"), name="static")
