@@ -103,6 +103,8 @@ app.include_router(chatHistory.router)
 #celery -A eApp.worker.celery_task_llm.celery_app_llm worker --loglevel=info --pool=solo 
 #
 
+# celery -A eApp.worker.celery_task_llm.celery_app_llm worker -P prefork --loglevel=INFO --concurrency=2 -Q llm_tasks
+
 # see all tmux:
 # tmux ls 
 # tmux kill-session -t celery
