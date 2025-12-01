@@ -396,3 +396,289 @@ celery -A eApp.worker.celery_task_llm.celery_app_llm worker -P prefork --logleve
 ```
 
 
+<br>
+<br>
+
+# `#5: Recover Database: `
+
+<br>
+<br>
+
+
+
+### **PostgreSQL Backup Note (Using pg_dump on EC2)**
+
+I created a full backup of my PostgreSQL database on the AWS EC2 instance using the following command:
+
+```bash
+pg_dump -U postgres mydb > mydb_backup.sql
+```
+
+After generating the backup file, I downloaded it to my local machine using `scp`:
+
+```bash
+scp -i demo.pem ec2-user@13.60.245.240:/home/ec2-user/mydb_backup.sql .
+```
+
+This backup file can be restored later on any new EC2 instance (or any PostgreSQL server) with the following command:
+
+```bash
+psql -U postgres -d mydb -f mydb_backup.sql
+```
+
+<br>
+<br>
+
+```bash
+❯ sudo -iu postgres              
+[postgres@archlinux ~]$ psql
+psql (17.6)
+Type "help" for help.
+
+postgres=# create database mydb owner ecommerce;
+CREATE DATABASE
+postgres=# exit
+[postgres@archlinux ~]$ exit
+logout
+                                                                                                                                                                      
+~   39s
+❯ cd Downloads             
+                                                                                                                                                                      
+~/Downloads   
+❯ psql -U postgres -d mydb -f mydb_backup.sql
+
+SET
+SET
+SET
+SET
+SET
+ set_config 
+------------
+ 
+(1 row)
+
+SET
+SET
+SET
+SET
+SET
+SET
+CREATE TABLE
+ALTER TABLE
+CREATE SEQUENCE
+ALTER TABLE
+ALTER SEQUENCE
+CREATE TABLE
+ALTER TABLE
+CREATE TABLE
+ALTER TABLE
+CREATE TABLE
+ALTER TABLE
+CREATE TABLE
+ALTER TABLE
+CREATE TABLE
+ALTER TABLE
+CREATE SEQUENCE
+ALTER TABLE
+ALTER SEQUENCE
+CREATE TABLE
+ALTER TABLE
+CREATE SEQUENCE
+ALTER TABLE
+ALTER SEQUENCE
+CREATE TABLE
+ALTER TABLE
+CREATE SEQUENCE
+ALTER TABLE
+ALTER SEQUENCE
+CREATE TABLE
+ALTER TABLE
+CREATE SEQUENCE
+ALTER TABLE
+ALTER SEQUENCE
+CREATE TABLE
+ALTER TABLE
+CREATE SEQUENCE
+ALTER TABLE
+ALTER SEQUENCE
+CREATE TABLE
+ALTER TABLE
+CREATE SEQUENCE
+ALTER TABLE
+ALTER SEQUENCE
+CREATE TABLE
+ALTER TABLE
+CREATE SEQUENCE
+ALTER TABLE
+ALTER SEQUENCE
+CREATE TABLE
+ALTER TABLE
+CREATE SEQUENCE
+ALTER TABLE
+ALTER SEQUENCE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+COPY 3
+COPY 814
+COPY 10
+COPY 2707
+COPY 229
+COPY 20
+COPY 26
+COPY 0
+COPY 0
+COPY 12
+COPY 2
+COPY 0
+COPY 3
+ setval 
+--------
+      3
+(1 row)
+
+ setval 
+--------
+     20
+(1 row)
+
+ setval 
+--------
+     26
+(1 row)
+
+ setval 
+--------
+      1
+(1 row)
+
+ setval 
+--------
+      1
+(1 row)
+
+ setval 
+--------
+     13
+(1 row)
+
+ setval 
+--------
+      3
+(1 row)
+
+ setval 
+--------
+      1
+(1 row)
+
+ setval 
+--------
+      3
+(1 row)
+
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+
+~/Downloads   
+❯ ❯ sudo -iu postgres                          
+[postgres@archlinux ~]$ psql -h localhost -d mydb
+psql (17.6)
+Type "help" for help.
+
+mydb=# 
+mydb=# \dt;
+                 List of relations
+ Schema |         Name          | Type  |   Owner   
+--------+-----------------------+-------+-----------
+ public | business              | table | ecommerce
+ public | checkpoint_blobs      | table | ecommerce
+ public | checkpoint_migrations | table | ecommerce
+ public | checkpoint_writes     | table | ecommerce
+ public | checkpoints           | table | ecommerce
+ public | conversations         | table | ecommerce
+ public | message_history       | table | ecommerce
+ public | payment_methods       | table | ecommerce
+ public | pricing_config        | table | ecommerce
+ public | products              | table | ecommerce
+ public | social_media_tokens   | table | ecommerce
+ public | subscriptions         | table | ecommerce
+ public | users                 | table | ecommerce
+(13 rows)
+
+mydb=# select * from users;
+ id | username |            email            |                                             password                                              | is_verified |      
+   join_date          | free_count | paid_status | role | is_active | last_login 
+----+----------+-----------------------------+---------------------------------------------------------------------------------------------------+-------------+------
+----------------------+------------+-------------+------+-----------+------------
+  2 | Yasin    | yasinarafat.d2021@gmail.com | $argon2id$v=19$m=65536,t=3,p=4$/a4IqbQCvX67i3Nk5DGUsw$Xzjb8S/rEWDwRcgvW/pClz19qU7JcBxDSQ/St1LiJts | t           | 2025-
+11-18 17:43:04.605769 |          0 | f           | user | t         | 
+  3 | prosen   | prosenjit1156@gmail.com     | $argon2id$v=19$m=65536,t=3,p=4$ayPxr/gagrv4ZMXJTvlleQ$2mT+KpT2fiETS61lFnzzj9cRrpsk1QkH0tDVDvnyk3k | f           | 2025-
+11-19 05:05:04.883594 |          3 | f           | user | t         | 
+  1 | Yasin    | ug2102030@cse.pstu.ac.bd    | $argon2id$v=19$m=65536,t=3,p=4$33C3J2XaXzgZfcBOds78Gw$ln8kaJPj2SOPkv3c5rHw5dZQ3/+bSzgVJpYIVdN1358 | t           | 2025-
+11-18 17:41:38.999952 |          3 | f           | user | t         | 
+(3 rows)
+
+mydb=# 
+
+```
+
+<br>
+<br>
+
