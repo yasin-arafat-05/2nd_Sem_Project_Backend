@@ -28,6 +28,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get('/')
+async def main_func():
+    return "Hello! Yasin Arafat Vhai!"
+
 
 
 #_________________________________ VERIFICATION ENDPOINT _________________________________

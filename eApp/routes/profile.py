@@ -12,7 +12,7 @@ router = APIRouter(
 
 @router.post("/user/me")
 async def user_login(user: schemas.User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(models.User).where(models.User.id == user))
+    result = await db.execute(select(models.User).where(models.User.id == user.id))
     current_user = result.scalar_one_or_none()
     if not current_user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")

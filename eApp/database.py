@@ -8,15 +8,33 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 connection_string = CONFIG.DATABASE_URL
 print(f"{connection_string}")
 
+
+#============Why connection_args??=================
+#1st connection establishement takes times
+#Sometimes can be occur TimeError:
+#To solve keep the connection alive 
+connection_args = {
+    "server_settings": {
+        "jit": "off", #Optimization: Disable JIT for simple queries
+        "tcp_keepalives_idle": "60",  # Send keepalive after 60s
+        "tcp_keepalives_interval": "10",  #Retry every 10s
+        "tcp_keepalives_count": "3", ## Fail fast after 3 retries
+        "statement_timeout": "30000"  # 30 seconds query timeout
+    }
+}
+
 async_engine = create_async_engine(
     url=connection_string,
-     # Connection Pool Settings
-    pool_size=20,      # Maximum connections in pool
-    max_overflow=10,   # Temporary connections beyond pool_size
-    pool_timeout=30,   # Seconds to wait for a connection
-    pool_recycle=1800, # Recycle connections after 30 minutes
-    pool_pre_ping=True,# Check connection health before use
-    echo=False # Set to False in production
+    pool_size=20,
+    max_overflow=10,
+    pool_timeout=30,
+    pool_recycle=300,
+    pool_pre_ping=True,
+    echo=False,
+    connect_args=connection_args,
+    # Additional performance settings
+    echo_pool=False,  # Set to True for debugging pool issues
+    hide_parameters=True  # Hide parameters in logs for security
 )
 
 
