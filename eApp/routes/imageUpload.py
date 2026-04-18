@@ -47,7 +47,7 @@ async def create_upload_file(
     await file.close()
 
     #user:
-    result = await db.execute(select(models.Business).where(models.Business.owner==user))
+    result = await db.execute(select(models.Business).where(models.Business.owner==user.id))
     owner = result.scalar_one_or_none()
     if not owner:
        raise HTTPException(
