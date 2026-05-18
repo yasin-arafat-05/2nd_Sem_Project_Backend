@@ -91,7 +91,15 @@ app.include_router(social_media.router)
 app.include_router(sse.router)
 app.include_router(chatHistory.router)
 
-#
+
+# run the applications:
+# cd C:\Users\CSITOCT\Desktop\2nd_Sem_Project_Backend
+# .venv\Scripts\activate
+# uvicorn eApp.main:app --host 0.0.0.0 --port 8000 --reload
+# Try with this url http://103.133.254.2:6085/docs
+# celery -A eApp.worker.celery_task_llm.celery_app_llm worker --loglevel=info --pool=solo
+
+
 #tmux new -s worker
 #crl+b then d 
 #Run separately for production:
@@ -115,3 +123,6 @@ app.include_router(chatHistory.router)
 # cnt + b, d -> in detach mood
 # tmux attach -t logs
 # 13.60.245.240
+# 
+#
+#

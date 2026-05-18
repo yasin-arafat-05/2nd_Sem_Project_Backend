@@ -87,13 +87,18 @@ async def delete_product(id: int, user: schemas.User = Depends(get_current_user)
 #--------------------------------------Update A the Product --------------------------
 @router.put("/update/product/{id}")
 async def update_product(id: int, update: schemas.UpdatedProduct, db: AsyncSession = Depends(get_db), user: schemas.User = Depends(get_current_user)):
-    result = await db.execute(select(models.Product).where(models.Product.business_id == user))
-    product_valid = result.scalar_one_or_none()
+    print("print-1")
+    result = await db.execute(select(models.Product).where(models.Product.business_id == user.id))
+    print("print-2")
+    print(result)
+    print("print-3")
+    product_valid = result.scalars().first()
+    print("print-4")
     if not product_valid:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                              detail="This is not your product.")
     result = await db.execute(select(models.Product).where(models.Product.id == id))
-    product = result.scalar_one_or_none()
+    product = result.scalars().first()
     if product:
         product.name = update.name
         product.category = update.category

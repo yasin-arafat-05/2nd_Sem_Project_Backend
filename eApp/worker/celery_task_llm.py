@@ -197,21 +197,46 @@ async def process_llm_request_internal(user_question: str, checkpoint_id: str, u
         redis_sync.publish(channel_id, json.dumps({"type": "error", "content": str(e)}))
 
 
-# Celery task
+# # Celery task
+# @celery_app_llm.task(bind=True, name="app.worker.celery_task_llm.process_llm_request_task")
+# def process_llm_request_task(self, user_question: str, checkpoint_id: str, user_id: int, channel_id: str):
+#     """Celery task that runs the async LLM processing"""
+#     try:
+#         import asyncio
+#         #<---For event loop close error---->
+#         nest_asyncio.apply()
+#         # (celery task->sync-->asyncio.run-->help to run-->async function from sync)
+#         return asyncio.run(process_llm_request_internal(user_question, checkpoint_id, user_id, channel_id))
+        
+#     except Exception as e:
+#         print(f"error in celery task: {e} ")
+#         logger.error(f"Celery task error: {e}")
+#         redis_sync.publish(channel_id, json.dumps({"type": "error", "content": str(e)}))
+        
+# # celery -A eApp.worker.celery_task_llm.celery_app_llm worker --loglevel=info --pool=solo 
+import asyncio
+import selectors
+import sys
+
 @celery_app_llm.task(bind=True, name="app.worker.celery_task_llm.process_llm_request_task")
 def process_llm_request_task(self, user_question: str, checkpoint_id: str, user_id: int, channel_id: str):
-    """Celery task that runs the async LLM processing"""
-    try:
-        import asyncio
-        #<---For event loop close error---->
-        nest_asyncio.apply()
-        # (celery task->sync-->asyncio.run-->help to run-->async function from sync)
-        return asyncio.run(process_llm_request_internal(user_question, checkpoint_id, user_id, channel_id))
-        
-    except Exception as e:
-        print(f"error in celery task: {e} ")
-        logger.error(f"Celery task error: {e}")
-        redis_sync.publish(channel_id, json.dumps({"type": "error", "content": str(e)}))
-        
-# celery -A eApp.worker.celery_task_llm.celery_app_llm worker --loglevel=info --pool=solo 
+    
+    # <---- উইন্ডোজের জন্য এই অংশটুকু যোগ করুন ---->
+    if sys.platform == 'win32':
+        # এটি সিলেক্টর লুপ সেট করবে যা ডাটাবেজ ড্রাইভারের জন্য প্রয়োজন
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    # <------------------------------------------>
 
+    try:
+        # আগের মতো লুপ রান করুন
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        return loop.run_until_complete(
+            process_llm_request_internal(user_question, checkpoint_id, user_id, channel_id)
+        )
+    except Exception as e:
+        print(f"Error in Celery task: {e}")
+        # রেডিসে এরর পাবলিশ করা...
+    finally:
+        loop.close()

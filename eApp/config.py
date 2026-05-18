@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     # Database Configuration
     DATABASE_URL: str = ""  # Async URL (postgresql+asyncpg)
     DATABASE_URL_CELERY_TASK: str = ""  # Sync URL (postgresql)
+    DATABASE_URL_ALEMBIC: str = "" #Sync URL(postgresql)
     DB_ROLE_NAME: str 
     DB_PASSWORD: str 
     DB_HOST: str 
@@ -49,6 +50,12 @@ CONFIG.DATABASE_URL = (
     f"postgresql+asyncpg://{CONFIG.DB_ROLE_NAME}:{CONFIG.DB_PASSWORD}"
     f"@{CONFIG.DB_HOST}:{CONFIG.DB_PORT}/{CONFIG.DATABASE}"
 )
+
+CONFIG.DATABASE_URL_ALEMBIC = (
+    f"postgresql://{CONFIG.DB_ROLE_NAME}:{CONFIG.DB_PASSWORD}"
+    f"@{CONFIG.DB_HOST}:{CONFIG.DB_PORT}/{CONFIG.DATABASE}"
+) 
+
 CONFIG.DATABASE_URL_CELERY_TASK = (
     f"postgresql://{CONFIG.DB_ROLE_NAME}:{CONFIG.DB_PASSWORD}@{CONFIG.DB_HOST}:{CONFIG.DB_PORT}/{CONFIG.DATABASE}"
 )

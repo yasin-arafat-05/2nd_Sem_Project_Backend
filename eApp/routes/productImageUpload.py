@@ -1,3 +1,4 @@
+import os 
 import secrets # python-inbuild to generate hex token -> use to store our image files
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,7 +16,7 @@ router = APIRouter(tags=['Image-Upload'])
 Mount is going to tell the fastapi that in this directory will save static files
 likes images.
 '''
-router.mount("/static", StaticFiles(directory="eApp/static"), name="static")
+router.mount("/static", StaticFiles(directory=r"eApp\static"), name="static")
 
 @router.post("/product/picture/{id}")
 async def create_product_picture(
@@ -24,8 +25,8 @@ async def create_product_picture(
     user : schemas.User = Depends(passHasing.get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    result = await db.execute(select(models.Business).where(models.Business.owner == user))
-    user_business = result.scalar_one_or_none()
+    result = await db.execute(select(models.Business).where(models.Business.owner == user.id))
+    user_business = result.scalars().first()
     if not user_business:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -33,7 +34,7 @@ async def create_product_picture(
         )
 
     result = await db.execute(select(models.Product).where(models.Product.business_id == user_business.owner))
-    product_valid = result.scalar_one_or_none()
+    product_valid = result.scalars().first()
     if not product_valid:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -41,18 +42,18 @@ async def create_product_picture(
         )
 
     result = await db.execute(select(models.Product).where(models.Product.id == id))
-    product = result.scalar_one_or_none()
+    product = result.scalars().first()
     if not product:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
-
-    PATH = 'eApp/static/images'
+    
+    PATH = os.path.join('eApp','static','images')
     filename = file.filename
     extention = filename.split('.')[1]
 
     if extention not in ['png','jpg','jpeg']:
         return {"status" : 'File extention should in .png .jpg and .jpeg'}
     token_name = secrets.token_hex(10)+'.'+extention
-    generatePath = f"{PATH}/{token_name}"
+    generatePath = os.path.join(f"{PATH}",f"{token_name}")
     file_content = await file.read()
 
     # wb -> write in binary 
@@ -68,7 +69,7 @@ async def create_product_picture(
         )
     product.product_image = token_name
     await db.commit()
-    file_url = f"static/images/{token_name}"
+    file_url = os.path.join("eApp","static","images",f"{token_name}")
     return FileResponse(path=file_url)
 
 

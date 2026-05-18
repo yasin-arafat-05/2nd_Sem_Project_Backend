@@ -1,8 +1,8 @@
-from eApp.database import Base,db_dependency
-from sqlalchemy.orm import relationship
-from sqlalchemy import Column,Integer,Boolean,ForeignKey,String,Text,Numeric,DateTime,Index
-from sqlalchemy.sql import func
 from datetime import datetime
+from eApp.database import Base
+from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
+from sqlalchemy import Column,Integer,Boolean,ForeignKey,String,Text,Numeric,DateTime,Index,Float
 
 class User(Base):
     __tablename__ = "users"
@@ -24,7 +24,7 @@ class User(Base):
     last_login = Column(DateTime,nullable=True)
 
     #one to many relationship with(Business)
-    business = relationship("Business",back_populates="user")
+    business = relationship("Business",back_populates="user",cascade="all, delete-orphan")
     # Relationship with SocialMediaToken
     social_media_tokens = relationship("SocialMediaToken",back_populates="user",cascade="all, delete-orphan")
     # Subscription relationships
@@ -42,6 +42,9 @@ class Business(Base):
     business_description = Column(Text,nullable=True,default="No Business Description")
     logo = Column(String(200),nullable=False,default="default.jpg")
     owner = Column(Integer,ForeignKey('users.id'))
+    lat = Column(Float,default=-1.0)
+    longi = Column(Float,default=-1.0)
+
 
     #many to one relationship with(User)
     user = relationship("User",back_populates="business")

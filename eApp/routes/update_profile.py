@@ -24,7 +24,7 @@ async def upload_profile(
     db: AsyncSession = Depends(get_db)
 ):
     try:
-        result = await db.execute(select(models.Business).where(models.Business.owner==user))
+        result = await db.execute(select(models.Business).where(models.Business.owner==user.id))
         business_profile = result.scalar_one_or_none()
         if not business_profile:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,

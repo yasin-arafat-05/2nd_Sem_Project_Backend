@@ -44,11 +44,11 @@ async def send_email(email: EmailSchema, instance: models.User):
                 <h3>Account Verification</h3>
                 <br>
                 <p> Thanks for choosing our services. Please click on the button below to
-                verify your account. </p>
+                verify your account. For creating your business account. </p>
 
                 <a style="margin-top : 1rem; padding: 1rem;border-radius: 0.5rem;
                 font-size:1rem;text-direction: none;background: #0275d8;color:white;"
-                href="http://127.0.0.1:8000/verification/?token={token}">
+                href="http://103.133.254.2:6085/verification/?token={token}">
                 Verify your email
                 </a>
             </div>

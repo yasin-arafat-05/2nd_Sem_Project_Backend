@@ -4,6 +4,7 @@ import requests
 import datetime
 import facebook
 from bs4 import BeautifulSoup
+from eApp.config import CONFIG
 from dotenv import load_dotenv
 from pydantic import BaseModel
 from asgiref.sync import async_to_sync
@@ -24,7 +25,7 @@ from eApp.services.social_media_service import SocialMediaService
 
 load_dotenv()
 model_name = "llama-3.1-8b-instant"
-search = TavilySearch()
+search = TavilySearch(tavily_api_key=CONFIG.TAVILY_API_KEY)
 
 
 
