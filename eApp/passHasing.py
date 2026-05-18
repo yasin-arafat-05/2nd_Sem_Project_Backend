@@ -94,9 +94,9 @@ async def get_current_user(token: str = Depends(oauth2_scheme),db: AsyncSession 
                         "trail_remain": user.free_count,
                         "paid": user.paid_status,
                         "role":user.role,
-                        
+                        "is_verified":user.is_verified
                         }
-        print(output)
+        #print(output)
         
         return user
     except JWTError:

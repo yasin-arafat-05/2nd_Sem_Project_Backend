@@ -19,6 +19,10 @@
 \d table_name
 ```
 
+- 3. to view the table comfortably 
+```bash
+\x 
+```
 
 <br>
 

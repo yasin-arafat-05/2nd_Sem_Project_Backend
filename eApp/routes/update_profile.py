@@ -23,6 +23,10 @@ async def upload_profile(
     user: schemas.User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
+    
+    if user.is_verified==False:
+        raise  HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="You need to Verify Your Account To Update Business Profile")
     try:
         result = await db.execute(select(models.Business).where(models.Business.owner==user.id))
         business_profile = result.scalar_one_or_none()
