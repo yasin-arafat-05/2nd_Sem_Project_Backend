@@ -42,7 +42,11 @@ async def email_verification(request: Request, token: str = Query(...), db: Asyn
     if user and not user.is_verified:
         user.is_verified = True
         await db.commit()
-        return template.TemplateResponse("verification.html", {"request": request, "USER_NAME": user.username})
+        return template.TemplateResponse(
+            request=request,
+            name="verification.html",
+            context={"USER_NAME":user.username}
+            )
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Invalid token or token expired",
