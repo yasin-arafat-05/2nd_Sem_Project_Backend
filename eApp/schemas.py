@@ -1,12 +1,16 @@
 from typing import Optional
-from pydantic import BaseModel, validator
-from datetime import datetime
+from pydantic import BaseModel,field_validator
+from datetime import datetime,timezone
 ##_______________________Creating Purpouse____________________##
 class User(BaseModel):
+    id : int 
     username : str 
     email : str
     password : str 
-  
+    trail_remain : int
+    paid : bool
+    role : str 
+    is_verified: bool 
     
     
 
@@ -25,16 +29,17 @@ class Product(BaseModel):
     original_price : float
     new_price : float
     percentage_discount : int 
-    offer_expiration_date : str = datetime.utcnow().strftime("%Y-%m-%d")
+    offer_expiration_date : str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     product_image : str 
     business_id : int
     add_to_cart : bool 
     is_favourite : bool 
-    @validator('offer_expiration_date', pre=True, always=True)
+    @field_validator('offer_expiration_date', mode='before')
+    @classmethod
     def set_default_offer_expiration_date(cls, value):
         if value == "string" or None:
             # If offer_expiration_date is not provided, set it to the current date
-            return datetime.utcnow().date().strftime("%Y-%m-%d")
+            return datetime.now(timezone.utc).strftime("%Y-%m-%d")
         return value
 
 
@@ -51,12 +56,12 @@ class UploadProduct(BaseModel):
     original_price : float
     new_price : float
     product_details : str
-    offer_expiration_date : str = datetime.utcnow().strftime("%Y-%m-%d")
-    @validator('offer_expiration_date', pre=True, always=True)
+    offer_expiration_date : str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    @field_validator('offer_expiration_date', mode='before')
     def set_default_offer_expiration_date(cls, value):
         if value == "string" or None:
             # If offer_expiration_date is not provided, set it to the current date
-            return datetime.utcnow().date().strftime("%Y-%m-%d")
+            return datetime.now(timezone.utc).date().strftime("%Y-%m-%d")
         return value
 
 #updated product model:
@@ -66,11 +71,11 @@ class UpdatedProduct(BaseModel):
     product_details : str 
     original_price : float
     new_price : float
-    offer_expiration_date : str = datetime.utcnow().strftime("%Y-%m-%d")
-    @validator('offer_expiration_date', pre=True, always=True)
+    offer_expiration_date : str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    @field_validator('offer_expiration_date', mode='before')
     def set_default_offer_expiration_date(cls, value):
         if value == "string" or None:
-            return datetime.utcnow().date().strftime("%Y-%m-%d")
+            return datetime.now(timezone.utc).date().strftime("%Y-%m-%d")
         return value
 
 

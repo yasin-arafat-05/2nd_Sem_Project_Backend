@@ -24,12 +24,16 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 router = APIRouter(tags=["chatbot"])
 
+ACTIVE_KEY = "active_chat_users"
+MAX_CONCURRENT = 2
+
+
 @router.post("/chat")
 async def chat_stream(input_data: InputMessage, request: Request, user = Depends(get_current_user), db = Depends(get_db)):
     if not input_data.message:
         raise HTTPException(status_code=400, detail="Message is required")
     
-    message = input_data.message
+    user_message = input_data.message
     checkpoint_id = input_data.checkpoint_id
     user_id = user.id
     free_trial = user.free_count
@@ -43,25 +47,26 @@ async def chat_stream(input_data: InputMessage, request: Request, user = Depends
     # Generate unique channel ID
     channel_id = f"chat_{user_id}_{str(uuid4())}"
 
-    # Check queue status before starting:is queue is full then w8 other user:
-    inspect = celery_app_llm.control.inspect()
-    active_tasks = inspect.active()
-    reserved_tasks = inspect.reserved()
-    
-    # Count total tasks in queue
-    total_tasks = 0
-    if active_tasks:
-        for worker_tasks in active_tasks.values():
-            total_tasks += len(worker_tasks)
-    if reserved_tasks:
-        for worker_tasks in reserved_tasks.values():
-            total_tasks += len(worker_tasks)
-    
+    # <-------------real active user count----------->
+    active_count = int(await redis_async.get(ACTIVE_KEY) or 0)
+    is_queued = active_count>=MAX_CONCURRENT
+    #increase count:
+    await redis_async.incr(ACTIVE_KEY)
+
+
     # <------- Call the Celery task id for fetch api-key------------->
     task = process_llm_request_task.apply_async(
-        args=(message, checkpoint_id, user_id, channel_id)
+        args=(user_message, checkpoint_id, user_id, channel_id)
     )
-    
+
+
+    # ==========Dubugging printing the total task ==========
+    # total task length:
+    print("*"*10)
+    print("*"*10)
+    print(active_count,MAX_CONCURRENT)
+    print("*"*10)
+    print("*"*10)
 
     # <-------- SSE streaming with Redis Pub/Sub------------------->
     async def event_generator():
@@ -69,24 +74,31 @@ async def chat_stream(input_data: InputMessage, request: Request, user = Depends
         await pubsub.subscribe(channel_id)
 
         # Send initial queue status
-        if total_tasks > 0:
-            yield f"data: {json.dumps({'type': 'queue_status', 'position': total_tasks, 'message': f'You are #{total_tasks} in queue. Please wait...'})}\n\n"
+        if is_queued:
+            yield f"data: {json.dumps({'type': 'queue_status', 'position': active_count, 'message': f'You are #{MAX_CONCURRENT} in queue. Please wait...\n'})}\n\n"
 
         try:
-            async for message in pubsub.listen():
-                if message["type"] == "message":
-                    data = json.loads(message["data"])
+            async for msg in pubsub.listen():
+
+                # if user get out from the app then terminate:
+                if await request.is_disconnected():
+                    task.revoke(terminate=True)
+                    break 
+
+                if msg["type"] == "message":
+                    data = json.loads(msg["data"])
                     yield f"data: {json.dumps(data)}\n\n"
-                    
                     if data.get("type") in ["end", "error"]:
                         break
         except Exception as e:
             logger.error(f"Error in event generator: {e}")
             yield f"data: {json.dumps({'type': 'error', 'content': 'Streaming failed'})}\n\n"
         finally:
+            # decremnt user:
+            await redis_async.decr(ACTIVE_KEY)
             try:
                 await pubsub.unsubscribe(channel_id)
-            except:
+            except :
                 pass
 
     return StreamingResponse(

@@ -15,6 +15,8 @@ class UploadProfile(BaseModel):
     city : str 
     region : str 
     business_description : str
+    lat : str 
+    longi : str
     
 
 @router.put("/update/profile")
@@ -23,7 +25,7 @@ async def upload_profile(
     user: schemas.User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    
+    print(update)
     if user.is_verified==False:
         raise  HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="You need to Verify Your Account To Update Business Profile")
@@ -38,6 +40,8 @@ async def upload_profile(
         business_profile.region = update.region
         business_profile.business_name = update.business_name
         business_profile.business_description = update.business_description
+        business_profile.lat = float(update.lat)
+        business_profile.longi = float(update.longi)
         await db.commit()
         return {"detail": "Profile Update Successfully"}
     except Exception as e:

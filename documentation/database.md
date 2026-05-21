@@ -1,12 +1,12 @@
 
-# 1. Command For Windows University Server(GUI):
+# `1. Command For Windows University Server(GUI):`
 
 - search psql then goto the terminal,  then give the necessary information to login.
 
 
 <br>
 
-# 2. Some basic command that need while developing a project
+# `2. Some basic command that need while developing a project:`
 
 <br>
 
@@ -26,7 +26,7 @@
 
 <br>
 
-# 3. Database Migration With Alembic:
+# `3. Database Migration With Alembic:`
 
 <br>
 
@@ -78,8 +78,18 @@ To execute that migration file and permanently update your database, run:
 alembic upgrade head
 ```
 
+<br>
 
+# `4. pgVector:` 
 
+<br>
+
+- 1. After dowloading [read_md_file_for_download](https://github.com/pgvector/pgvector) the pgvector extension give command like this:
+```bash
+CREATE EXTENSION vector;
+```
+- 2. select an embedding model:
+  - openai 'text-embedding-3-small'.
 
 
 

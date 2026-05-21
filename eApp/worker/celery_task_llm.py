@@ -7,12 +7,13 @@ from celery import Celery
 from celery import shared_task
 from eApp.config import CONFIG
 from sqlalchemy import select, func 
-from eApp.database import asyncSession
 from eApp.redis_setup import redis_sync
 from asgiref.sync import async_to_sync
 from langchain_core.messages import AIMessage
 from eApp.workflows.workflow import workflow
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from sqlalchemy.ext.asyncio import create_async_engine,async_sessionmaker,AsyncSession
+from eApp.database import connection_args
 
 logger = logging.getLogger(__name__)  
 
@@ -65,8 +66,31 @@ async def chunking_message(chunk):
 
 # Async processing function
 async def process_llm_request_internal(user_question: str, checkpoint_id: str, user_id: int, channel_id: str):
+    
+    """ 
+    Problem is that,  1st request processed well, but 2nd request 
+    get loop confit, so we can solve this by creating a new database connection 
+    at each task.
+    """
+    engine = create_async_engine(
+        url=CONFIG.DATABASE_URL,
+        pool_size=5,
+        max_overflow=2,
+        pool_pre_ping=True,
+        echo=False,
+        connect_args=connection_args,
+    )
+    session_factory = async_sessionmaker(
+        bind=engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+        autoflush=False,
+    )
+    
+    
     try:
-        async with asyncSession() as db:
+        print("-----we are in process llm request internal-----")
+        async with session_factory() as db:
             # Check current checkpoint
             is_new_conversation = (checkpoint_id == "")
             user_checkpoint_id = str(checkpoint_id) if not is_new_conversation else str(uuid4())
@@ -195,7 +219,8 @@ async def process_llm_request_internal(user_question: str, checkpoint_id: str, u
     except Exception as e:
         logger.error(f"Error in Celery task: {e}")
         redis_sync.publish(channel_id, json.dumps({"type": "error", "content": str(e)}))
-
+    finally:
+        await engine.dispose()
 
 # # Celery task
 # @celery_app_llm.task(bind=True, name="app.worker.celery_task_llm.process_llm_request_task")
@@ -214,29 +239,33 @@ async def process_llm_request_internal(user_question: str, checkpoint_id: str, u
 #         redis_sync.publish(channel_id, json.dumps({"type": "error", "content": str(e)}))
         
 # # celery -A eApp.worker.celery_task_llm.celery_app_llm worker --loglevel=info --pool=solo 
+
+import sys
 import asyncio
 import selectors
-import sys
+from eApp.redis_setup import redis_async
 
 @celery_app_llm.task(bind=True, name="app.worker.celery_task_llm.process_llm_request_task")
 def process_llm_request_task(self, user_question: str, checkpoint_id: str, user_id: int, channel_id: str):
-    
-    # <---- উইন্ডোজের জন্য এই অংশটুকু যোগ করুন ---->
     if sys.platform == 'win32':
-        # এটি সিলেক্টর লুপ সেট করবে যা ডাটাবেজ ড্রাইভারের জন্য প্রয়োজন
-        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    # <------------------------------------------>
-
-    try:
-        # আগের মতো লুপ রান করুন
+        loop = asyncio.SelectorEventLoop(selectors.SelectSelector())
+    else:
         loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
+
+    # <----------------event loop-------------------------->
+    asyncio.set_event_loop(loop)
+    try:
+        #loop = asyncio.new_event_loop()
         return loop.run_until_complete(
             process_llm_request_internal(user_question, checkpoint_id, user_id, channel_id)
         )
     except Exception as e:
         print(f"Error in Celery task: {e}")
-        # রেডিসে এরর পাবলিশ করা...
+        async def publish_error():
+            await redis_async.publish(channel_id, json.dumps({
+                "type": "error",
+                "content": "Something went wrong. Please try again."
+            }))
+        loop.run_until_complete(publish_error())
     finally:
         loop.close()

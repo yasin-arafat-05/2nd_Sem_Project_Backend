@@ -24,7 +24,8 @@ async def user_login(user: schemas.User = Depends(get_current_user), db: AsyncSe
 
     result = await db.execute(select(models.Product).where(models.Product.business_id == business.owner))
     product_all = result.scalars().all()
-
+    # print(business.lat)
+    # print(business.longi)
     return {
         "Current User Information": {
             "User Name": current_user.username,
@@ -36,7 +37,9 @@ async def user_login(user: schemas.User = Depends(get_current_user), db: AsyncSe
             "Business Image": business.logo,
             "Business Description" : business.business_description,
             "City" : business.city,
-            "region" : business.region
+            "region" : business.region,
+            "lat": business.lat,
+            "long":business.longi
         },
         "User All Product": [{
             "id" : product.id,
