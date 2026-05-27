@@ -67,6 +67,7 @@ class Product(Base):
     is_favourite = Column(Boolean,nullable=False,default=False)
     add_to_cart = Column(Boolean,nullable=False,default=False)
     business_id = Column(Integer,ForeignKey('business.id'))
+    
     # For chatbot/social media integration - unique ID for each product
     chatbot_product_id = Column(String(100),nullable=True,unique=True,index=True)
 

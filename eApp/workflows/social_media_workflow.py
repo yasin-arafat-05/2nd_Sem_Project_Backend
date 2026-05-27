@@ -658,7 +658,7 @@ def final_evalution_state(state:AgentState):
 
 # #################### Build the Graph ####################
 
-workflow = StateGraph(state_schema=AgentState)
+social_media_wkf = StateGraph(state_schema=AgentState)
 
 ANALYZE_REQUIREMENTS = "Analyze_Requirements"
 CLARIFY_REQUIREMENTS = "Clarify_Requirements"
@@ -670,20 +670,20 @@ POST_CONTENT = "Post_Content"
 FINAL_USER_RESULT = "Final_User_Reust"
 
 # Add nodes
-workflow.add_node(ANALYZE_REQUIREMENTS, analyze_requirements)
-workflow.add_node(CLARIFY_REQUIREMENTS, clarify_requirements) 
-workflow.add_node(RESEARCH_CONTENT, research_content)
-workflow.add_node(GENERATE_MEDIA, generate_media)
-workflow.add_node(CREATE_CONTENT, create_social_media_content)
-workflow.add_node(QUALITY_CHECK, quality_check)
-workflow.add_node(POST_CONTENT, post_to_social_media)
-workflow.add_node(FINAL_USER_RESULT,final_evalution_state)
+social_media_wkf.add_node(ANALYZE_REQUIREMENTS, analyze_requirements)
+social_media_wkf.add_node(CLARIFY_REQUIREMENTS, clarify_requirements) 
+social_media_wkf.add_node(RESEARCH_CONTENT, research_content)
+social_media_wkf.add_node(GENERATE_MEDIA, generate_media)
+social_media_wkf.add_node(CREATE_CONTENT, create_social_media_content)
+social_media_wkf.add_node(QUALITY_CHECK, quality_check)
+social_media_wkf.add_node(POST_CONTENT, post_to_social_media)
+social_media_wkf.add_node(FINAL_USER_RESULT,final_evalution_state)
     
-# Define workflow with conditional edge
-workflow.set_entry_point(ANALYZE_REQUIREMENTS)
+# Define social_media with conditional edge
+social_media_wkf.set_entry_point(ANALYZE_REQUIREMENTS)
 
 # Conditional edge after analyze_requirements
-workflow.add_conditional_edges(
+social_media_wkf.add_conditional_edges(
     ANALYZE_REQUIREMENTS,
     check_requirements,
     {
@@ -693,10 +693,10 @@ workflow.add_conditional_edges(
 )
 
 # Rest of the edges
-workflow.add_edge(CLARIFY_REQUIREMENTS, END) 
-workflow.add_edge(RESEARCH_CONTENT, GENERATE_MEDIA)
-workflow.add_edge(GENERATE_MEDIA, CREATE_CONTENT)
-workflow.add_edge(CREATE_CONTENT, QUALITY_CHECK)
-workflow.add_edge(QUALITY_CHECK, POST_CONTENT)
-workflow.add_edge(POST_CONTENT,FINAL_USER_RESULT)
-workflow.add_edge(FINAL_USER_RESULT, END)
+social_media_wkf.add_edge(CLARIFY_REQUIREMENTS, END) 
+social_media_wkf.add_edge(RESEARCH_CONTENT, GENERATE_MEDIA)
+social_media_wkf.add_edge(GENERATE_MEDIA, CREATE_CONTENT)
+social_media_wkf.add_edge(CREATE_CONTENT, QUALITY_CHECK)
+social_media_wkf.add_edge(QUALITY_CHECK, POST_CONTENT)
+social_media_wkf.add_edge(POST_CONTENT,FINAL_USER_RESULT)
+social_media_wkf.add_edge(FINAL_USER_RESULT, END)

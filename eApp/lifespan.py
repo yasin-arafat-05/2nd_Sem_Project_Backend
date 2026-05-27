@@ -5,7 +5,7 @@ from sqlalchemy.sql import text
 from psycopg.rows import dict_row
 from contextlib import asynccontextmanager
 from psycopg_pool import AsyncConnectionPool
-from eApp.workflows.workflow import workflow
+from eApp.workflows.social_media_workflow import social_media_wkf
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from eApp.database import asyncSession,async_engine,connection_string
 
@@ -46,7 +46,7 @@ async def lifespan(app:FastAPI):
             try:
                 memory = AsyncPostgresSaver(conn)
                 await memory.setup()
-                graph = workflow.compile(checkpointer=memory)
+                graph = social_media_wkf.compile(checkpointer=memory)
                 app.state.graph = graph 
             except Exception:
                 # return the connection if setup fails

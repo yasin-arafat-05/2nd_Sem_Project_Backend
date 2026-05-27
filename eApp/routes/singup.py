@@ -11,13 +11,14 @@ router = APIRouter(tags=['SignUP'])
 #_________________________________ REGISTRATION ENDPOINT _________________________________
 
 @router.post('/registration', status_code=status.HTTP_201_CREATED)
-async def user_registration(user: schemas.User, db: db_dependency):
+async def user_registration(user: schemas.UserSignUP, db: db_dependency):
     user_data = user.model_dump(exclude_unset=True)
     user_data["password"] = get_password_hash(user_data["password"])
     result = await db.execute(select(models.User).where(models.User.email == user.email))
     fnd = result.scalar_one_or_none()
     if fnd:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Email already exists.")
+    print("no duplicate acount procedding......")
     try:
         new_user = models.User(**user_data)
         db.add(new_user)
@@ -39,5 +40,4 @@ async def user_registration(user: schemas.User, db: db_dependency):
         await db.rollback()
         print(f"error while signup: {e}")
         raise HTTPException(status_code=400, detail=str(e))
-
     return {"detail":"User Created Successfully. Please Check Your Email To Verify."}

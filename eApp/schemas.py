@@ -11,6 +11,12 @@ class User(BaseModel):
     paid : bool
     role : str 
     is_verified: bool 
+
+class UserSignUP(BaseModel):
+    username : str 
+    email : str 
+    password : str 
+    
     
     
 
@@ -82,6 +88,12 @@ class UpdatedProduct(BaseModel):
 class InputMessage(BaseModel):
     message: str
     checkpoint_id: Optional[str] = None
+    # 
+    # 1. social_media_workflow
+    # 2. nearby_product_finder_workflow
+    # 3. casual_talk_about_product_review_workflow
+    # 
+    workflow_type : str = ''
 
 
 

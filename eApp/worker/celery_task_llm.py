@@ -10,7 +10,7 @@ from sqlalchemy import select, func
 from eApp.redis_setup import redis_sync
 from asgiref.sync import async_to_sync
 from langchain_core.messages import AIMessage
-from eApp.workflows.workflow import workflow
+from eApp.workflows.social_media_workflow import social_media_wkf
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from sqlalchemy.ext.asyncio import create_async_engine,async_sessionmaker,AsyncSession
 from eApp.database import connection_args
@@ -147,7 +147,7 @@ async def process_llm_request_internal(user_question: str, checkpoint_id: str, u
             # Stream LangGraph events - This will work because it's inside async context
             string = CONFIG.DATABASE_URL_CELERY_TASK
             async with AsyncPostgresSaver.from_conn_string(string) as memory:
-                graph = workflow.compile(checkpointer=memory)
+                graph = social_media_wkf.compile(checkpointer=memory)
                 events =  graph.astream_events(
                     input={"user_question": user_question,"current_user_id":int(user_id)},
                     version="v2",
