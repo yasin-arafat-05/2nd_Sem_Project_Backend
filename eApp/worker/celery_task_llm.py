@@ -7,13 +7,14 @@ from celery import Celery
 from celery import shared_task
 from eApp.config import CONFIG
 from sqlalchemy import select, func 
-from eApp.redis_setup import redis_sync
 from asgiref.sync import async_to_sync
-from langchain_core.messages import AIMessage
-from eApp.workflows.social_media_workflow import social_media_wkf
-from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-from sqlalchemy.ext.asyncio import create_async_engine,async_sessionmaker,AsyncSession
+from eApp.redis_setup import redis_sync
 from eApp.database import connection_args
+from langchain_core.messages import AIMessage
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from eApp.workflows.social_media_workflow import social_media_wkf
+from eApp.workflows.nearby_product_finder_workflow import nearby_product_finder_wkf
+from sqlalchemy.ext.asyncio import create_async_engine,async_sessionmaker,AsyncSession
 
 logger = logging.getLogger(__name__)  
 
@@ -65,7 +66,7 @@ async def chunking_message(chunk):
         )
 
 # Async processing function
-async def process_llm_request_internal(user_question: str, checkpoint_id: str, user_id: int, channel_id: str):
+async def process_llm_request_internal(user_question: str, checkpoint_id: str, user_id: int, channel_id: str,workflow_type:str):
     
     """ 
     Problem is that,  1st request processed well, but 2nd request 
@@ -147,7 +148,10 @@ async def process_llm_request_internal(user_question: str, checkpoint_id: str, u
             # Stream LangGraph events - This will work because it's inside async context
             string = CONFIG.DATABASE_URL_CELERY_TASK
             async with AsyncPostgresSaver.from_conn_string(string) as memory:
-                graph = social_media_wkf.compile(checkpointer=memory)
+                if workflow_type == 'social_media_posting':
+                    graph = social_media_wkf.compile(checkpointer=memory)
+                elif workflow_type == 'local_search':
+                    graph = nearby_product_finder_wkf.compile(checkpointer=memory)
                 events =  graph.astream_events(
                     input={"user_question": user_question,"current_user_id":int(user_id)},
                     version="v2",
@@ -246,7 +250,7 @@ import selectors
 from eApp.redis_setup import redis_async
 
 @celery_app_llm.task(bind=True, name="app.worker.celery_task_llm.process_llm_request_task")
-def process_llm_request_task(self, user_question: str, checkpoint_id: str, user_id: int, channel_id: str):
+def process_llm_request_task(self, user_question: str, checkpoint_id: str, user_id: int, channel_id: str,workflow_type:str):
     if sys.platform == 'win32':
         loop = asyncio.SelectorEventLoop(selectors.SelectSelector())
     else:
@@ -257,7 +261,7 @@ def process_llm_request_task(self, user_question: str, checkpoint_id: str, user_
     try:
         #loop = asyncio.new_event_loop()
         return loop.run_until_complete(
-            process_llm_request_internal(user_question, checkpoint_id, user_id, channel_id)
+            process_llm_request_internal(user_question, checkpoint_id, user_id, channel_id,workflow_type)
         )
     except Exception as e:
         print(f"Error in Celery task: {e}")

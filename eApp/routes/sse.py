@@ -38,6 +38,7 @@ async def chat_stream(input_data: InputMessage, request: Request, user = Depends
     user_id = user.id
     free_trial = user.free_count
     paid_ = user.paid_status
+    workflow_type = input_data.workflow_type
     
     #print(f"User: {user}, Input: {input_data}")
     
@@ -56,7 +57,7 @@ async def chat_stream(input_data: InputMessage, request: Request, user = Depends
 
     # <------- Call the Celery task id for fetch api-key------------->
     task = process_llm_request_task.apply_async(
-        args=(user_message, checkpoint_id, user_id, channel_id)
+        args=(user_message, checkpoint_id, user_id, channel_id,workflow_type)
     )
 
 

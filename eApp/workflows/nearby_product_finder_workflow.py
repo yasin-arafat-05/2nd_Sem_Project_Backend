@@ -338,7 +338,7 @@ if __name__ == "__main__":
     # grph = app.get_graph().draw_mermaid_png()
     # with open("eApp/workflows/diagram/graph_pipeline.png", "wb") as f:
     #         f.write(grph)
-    # print("🎉 Success! Your graph image has been saved as 'graph_pipeline.png'")
+    # print(" Success! Your graph image has been saved as 'graph_pipeline.png'")
     final_state = asyncio.run(app.ainvoke(agnet_state))
     print(final_state)
     

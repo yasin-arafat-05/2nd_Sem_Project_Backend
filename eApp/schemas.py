@@ -96,8 +96,8 @@ class InputMessage(BaseModel):
     # 1. social_media_workflow
     # 2. nearby_product_finder_workflow
     # 3. casual_talk_about_product_review_workflow
-    # 
-    workflow_type : str = ''
+    #
+    workflow_type : str
 
 
 
