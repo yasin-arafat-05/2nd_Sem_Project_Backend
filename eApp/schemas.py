@@ -23,7 +23,6 @@ class LocalSearch(BaseModel):
     rad:float
     categories:list[str] 
     
-    
 
 class Business(BaseModel):
     business_name : str 

@@ -16,7 +16,7 @@ router = APIRouter(tags=['Image-Upload'])
 Mount is going to tell the fastapi that in this directory will save static files
 likes images.
 '''
-router.mount("/static", StaticFiles(directory=r"eApp\static"), name="static")
+router.mount("/static", StaticFiles(directory=r"eApp/static"), name="static")
 
 @router.post("/product/picture/{id}")
 async def create_product_picture(

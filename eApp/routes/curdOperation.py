@@ -12,10 +12,24 @@ router = APIRouter(tags=["CRUD->Create,Read,Update,Delete"])
 @router.post("/upload/product")
 async def add_new_product(product: schemas.UploadProduct,user: schemas.User = Depends(get_current_user),db: AsyncSession = Depends(get_db)):
     product_data = product.model_dump(exclude_unset=True)
+    
     result = await db.execute(select(models.User).where(models.User.id == user.id))
     current_user = result.scalar_one_or_none()
+    
+    if not current_user or not current_user.is_verified:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="First verify your account.")
+    
+    
+    business_result = await db.execute(
+        select(models.Business).where(models.Business.owner == current_user.id)
+    )
+    current_business = business_result.scalar_one_or_none()
+    
+    if not current_business:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Business not found for this user.")
+    
     if current_user and current_user.is_verified:
-        product_data['business_id'] = current_user.id
+        product_data['business_id'] = current_business.id
         new_product = models.Product(**product_data)
         new_product.percentage_discount = ((new_product.original_price - new_product.new_price) / new_product.original_price) * 100
         

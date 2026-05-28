@@ -22,7 +22,7 @@ async def user_login(user: schemas.User = Depends(get_current_user), db: AsyncSe
     if not business:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Business not found")
 
-    result = await db.execute(select(models.Product).where(models.Product.business_id == business.owner))
+    result = await db.execute(select(models.Product).where(models.Product.business_id == business.id))
     product_all = result.scalars().all()
     # print(business.lat)
     # print(business.longi)

@@ -3,18 +3,18 @@ from dotenv import load_dotenv
 from pydantic import BaseModel
 from eApp.config import CONFIG
 from typing import List,Optional
-from eApp.database import asyncSession
 from langchain_groq import ChatGroq
+from eApp.database import asyncSession
 from langgraph.graph import StateGraph,START,END
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from eApp.routes.categories import fetch_categories_from_db
+from eApp.routes.local_search import local_search_llm_context
 from langchain_core.messages import HumanMessage,AIMessage,SystemMessage
 
 
 load_dotenv()
 model_name = "llama-3.1-8b-instant"
-
 
 class AgentState(BaseModel):
     user_question: str 
@@ -24,8 +24,10 @@ class AgentState(BaseModel):
     product_categry_des: str = None
     router_clarify : bool = False 
     clarification_message: str = ""
+    categories_clarification_message: str = ""
     categories_match_or_not: bool = False 
     matches_categories : List[str] = []
+    fetch_product_info : List[str] = []
     user_lat : float 
     user_long : float 
 
@@ -134,8 +136,9 @@ async def fetch_categories(state:AgentState):
     try:
         class OutputParser(BaseModel):
             category_matching : bool = True 
-            product_categories_list : str = []
-        with asyncSession() as db:
+            product_categories_list : List[str] = []
+            
+        async with asyncSession() as db:
             categor_db = await fetch_categories_from_db(db) 
         category_list = [item["category"] for item in categor_db]
 
@@ -172,6 +175,9 @@ async def fetch_categories(state:AgentState):
         prompts = ChatPromptTemplate(messages=[system_message,human_message])
         chain = prompts | structured_llm
         response = chain.invoke({})
+        print("=======Categories fetch from response========")
+        print(response)
+        print("=============================================")
         state.categories_match_or_not = response.category_matching
         state.matches_categories = response.product_categories_list
         return state
@@ -180,17 +186,118 @@ async def fetch_categories(state:AgentState):
         return state
 
 
+def categories_router(state:AgentState):
+    if state.categories_match_or_not:
+        return 'proceed' 
+    else:
+        return 'clarify'
+
+
+
+async def categories_clarify(state: AgentState):
+    try:
+        print("--- CATEGORY CLARIFICATION NODE ---")
+    
+        category_list = state.matches_categories
+        system_prompt = (
+            "You are a helpful customer support agent for a hyperlocal e-commerce platform.\n"
+            "The user searched for a product, but we do not have a matching category for it.\n"
+            "Your job is to generate a polite clarification message explaining that we couldn't find a direct match.\n"
+            "Show them some of our available categories and kindly ask them to try again or choose from the list."
+        )
+        
+        human_prompt = (
+            f"User's original question: \"{state.user_question}\"\n"
+            f"Extracted product keyword: \"{state.product_categry_des}\"\n"
+            f"Our Available categories: {category_list}\n\n"
+            "Task: Draft a helpful, polite, and concise response in English asking the user for clarification."
+        )
+        
+        llm = ChatGroq(model=model_name, temperature=0.5) 
+        prompts = ChatPromptTemplate(messages=[
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=human_prompt)
+        ])
+        
+        chain = prompts | llm
+        response = await chain.ainvoke({}) 
+        state.categories_clarification_message = response.content
+        return state
+
+    except Exception as e:
+        print(f"Found error while categories_clarify node: \n\n {e} \n\n")
+        state.categories_clarification_message = (
+            "Sorry, we couldn't find any category matching your requested product. "
+            "Please try searching with a different keyword or choose from our available categories."
+        )
+        return state
+
+
+async def fetch_prod_info(state: AgentState):
+    try:
+        print("--- FETCH PRODUCT INFORMATION NODE ---")
+        async with asyncSession() as db:
+            fetch_prod_information = await local_search_llm_context(
+                db=db,
+                categories=state.matches_categories,
+                user_lat=state.user_lat,
+                user_long=state.user_long,
+                radius_km=5
+            )
+        
+        state.fetch_product_info = fetch_prod_information
+        system_prompt = (
+            "You are an expert Shopping Assistant for a hyperlocal e-commerce platform.\n"
+            "Your job is to analyze the available products found near the user and present them "
+            "in a clear, structured, and helpful manner.\n"
+            "Highlight key details like store name, price, and availability/distance if provided.\n"
+            "If no products are available in the context, politely inform the user that no items "
+            "were found within their 5km radius."
+        )
+        
+        human_prompt = (
+            f"User's original question: \"{state.user_question}\"\n"
+            f"Target product/category: \"{state.product_categry_des}\"\n\n"
+            f"Available Products Context (Found within 5km):\n{fetch_prod_information}\n\n"
+            "Task: Based on the products context above, write a polite and concise response to the user. "
+            "List the best options available for them."
+        )
+
+        
+        llm = ChatGroq(model=model_name, temperature=0.3)
+        prompts = ChatPromptTemplate(messages=[
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=human_prompt)
+        ])
+        
+        chain = prompts | llm
+        response = await chain.ainvoke({})
+        
+        state.generated_content = response.content
+        print(f"Product Info Response Generated Successfully.")
+        return state
+
+    except Exception as e:
+        print(f"Found error while fetch_prod_info node: \n\n {e} \n\n")
+        state.generated_content = "Sorry, I encountered an error while fetching the product details. Please try again."
+        return state
+   
+    
 
 # ================================== Making the node ==================================
 nearby_product_finder_wkf = StateGraph(state_schema=AgentState)
 ANALYZE_REQUIREMENTS = "Analyze_Requirements"
 CLARIFY_REQUIREMENTS = "Clarify_Requirements"
+CATEGORIES_CLARIFY = "Categories_Clarify"
 FETCH_CATEGORIES = "Fetch_Categories"
+FETCH_PROD_INFO = "Fetch_Prod_Info"
 
 # add nodes:
 nearby_product_finder_wkf.add_node(ANALYZE_REQUIREMENTS,analysis_requirements)
 nearby_product_finder_wkf.add_node(CLARIFY_REQUIREMENTS,clarify_requirements)
 nearby_product_finder_wkf.add_node(FETCH_CATEGORIES,fetch_categories)
+nearby_product_finder_wkf.add_node(FETCH_PROD_INFO,fetch_prod_info)
+nearby_product_finder_wkf.add_node(CATEGORIES_CLARIFY,categories_clarify)
 
 #edges:
 nearby_product_finder_wkf.set_entry_point(ANALYZE_REQUIREMENTS)
@@ -203,11 +310,36 @@ nearby_product_finder_wkf.add_conditional_edges(
     }
 )
 
+nearby_product_finder_wkf.add_edge(CLARIFY_REQUIREMENTS,END)
+
+nearby_product_finder_wkf.add_conditional_edges(
+    FETCH_CATEGORIES,
+    categories_router,{
+        "proceed": FETCH_PROD_INFO, 
+        "clarify": CATEGORIES_CLARIFY
+    }
+)
+
+nearby_product_finder_wkf.add_edge(CATEGORIES_CLARIFY,END)
+nearby_product_finder_wkf.add_edge(FETCH_PROD_INFO,END)
+
+
 if __name__ == "__main__":
-    agnet_sate = AgentState(
-        user_question="Hi! How are frd.",
+    import asyncio 
+    agnet_state = AgentState(
+        user_question="Hi! i want to buy a pc. could u can help me?",
         current_user_id=1,
-        accumulated_info=[],
-        generated_content=""
+        user_lat = 24.7632709,
+        user_long  = 89.8870121
     )
-    print(analysis_requirements(agnet_sate))
+    app = nearby_product_finder_wkf.compile()
+    
+    # save the workflow graph:
+    # grph = app.get_graph().draw_mermaid_png()
+    # with open("eApp/workflows/diagram/graph_pipeline.png", "wb") as f:
+    #         f.write(grph)
+    # print("🎉 Success! Your graph image has been saved as 'graph_pipeline.png'")
+    final_state = asyncio.run(app.ainvoke(agnet_state))
+    print(final_state)
+    
+    
