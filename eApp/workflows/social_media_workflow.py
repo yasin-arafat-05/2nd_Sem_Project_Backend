@@ -12,7 +12,6 @@ from eApp.schemas import FacebookTextPost
 from typing import Literal, List, Dict, Any, Union
 
 
-
 from langchain_groq import ChatGroq
 from langchain_tavily import TavilySearch
 from langgraph.graph import StateGraph, START, END
@@ -177,49 +176,43 @@ def clarify_requirements(state: AgentState) -> AgentState:
         """)
         
         prompt = ChatPromptTemplate.from_messages([system_message, human_message])
-        llm = ChatGroq(model=model_name)
+        llm = ChatGroq(model=model_name,temperature=0.7)
         chain = prompt | llm | StrOutputParser()
-        
         guidance_message = chain.invoke({})
-        
         state.clarification_message = guidance_message
         state.current_step = "clarification_provided"
-        
         print("=" * 50)
         print("🆘 GUIDANCE MESSAGE FOR USER:")
         print("=" * 50)
         print(guidance_message)
         print("=" * 50)
-        
         return state
         
     except Exception as e:
         # Fallback message if LLM fails
         state.clarification_message = """
-🤖 **How to Use This Social Media Automation Tool**
+        🤖 **How to Use This Social Media Automation Tool**
 
-I couldn't understand your request clearly. Here's how to get the best results:
+        I couldn't understand your request clearly. Here's how to get the best results:
 
-**Please specify in your request:**
-- **Which platform**: Facebook, Instagram, or LinkedIn
-- **What content type**: Text, Image, or Video  
-- **Your topic**: What you want to post about
+        **Please specify in your request:**
+        - **Which platform**: Facebook, Instagram, or LinkedIn
+        - **What content type**: Text, Image, or Video  
+        - **Your topic**: What you want to post about
 
-**Example formats:**
-- "Create a Facebook post with image about AI in healthcare"
-- "Make an Instagram text post about healthy eating tips"  
-- "Generate LinkedIn video content about career growth"
-- "Facebook post about Bangladesh cricket team with image"
+        **Example formats:**
+        - "Create a Facebook post with image about AI in healthcare"
+        - "Make an Instagram text post about healthy eating tips"  
+        - "Generate LinkedIn video content about career growth"
+        - "Facebook post about Bangladesh cricket team with image"
 
-
-**What I can do for you:**
-- Research your topic automatically
-- Create engaging social media content  
-- Generate images/videos (if requested)
-- Post directly to your social media
-
-Try again with a clearer request! 
-"""
+        **What I can do for you:**
+        - Research your topic automatically
+        - Create engaging social media content  
+        - Generate images/videos (if requested)
+        - Post directly to your social media
+        Try again with a clearer request! 
+        """
         state.current_step = "clarification_provided"
         return state
 
@@ -402,7 +395,6 @@ def clean_extracted_text(text, url=None):
         else:
             cleaned_text = truncated + "... [content truncated]"
     return cleaned_text.strip()
-
 
 
 

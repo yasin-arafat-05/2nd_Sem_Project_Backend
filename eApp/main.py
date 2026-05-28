@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, status, HTTPException, Request, Query,Depends
 from eApp.passHasing import get_password_hash, very_token,get_current_user
 from eApp.routes import curdOperation, login,imageUpload,profile,singup,productImageUpload,categories,bestselling,allUser,update_profile
-from eApp.routes import fetch_cart_product, add_to_cart,remove_from_cart,add_to_favourite,remove_from_favourite
+from eApp.routes import fetch_cart_product, add_to_cart,remove_from_cart,add_to_favourite,remove_from_favourite,local_search
 from eApp.routes import fetch_fav_product, social_media, sse, chatHistory
 
 #jinja2Templates -> For showing html in verification.
@@ -89,6 +89,8 @@ app.include_router(add_to_favourite.router)
 app.include_router(remove_from_favourite.router)
 
 app.include_router(fetch_fav_product.router)
+
+app.include_router(local_search.router)
 
 # ==================== Social Media Integration Routes ====================
 app.include_router(social_media.router)

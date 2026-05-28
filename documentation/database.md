@@ -84,7 +84,7 @@ alembic upgrade head
 
 <br>
 
-- 1. After dowloading [read_md_file_for_download](https://github.com/pgvector/pgvector) the pgvector extension give command like this:
+- 1. After dowloading [follow_read_md_file_for_download](https://github.com/pgvector/pgvector) the pgvector extension give command like this:
 ```bash
 CREATE EXTENSION vector;
 ```
@@ -92,4 +92,9 @@ CREATE EXTENSION vector;
   - openai 'text-embedding-3-small'.
 
 
+<br>
+
+# `5. Product Search Optimization With TrigramIndex:` 
+
+<br>
 

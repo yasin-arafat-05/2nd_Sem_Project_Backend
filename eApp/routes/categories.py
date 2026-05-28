@@ -6,9 +6,7 @@ from eApp.database import get_db
 
 router = APIRouter(tags=["Categories"])
 
-
-@router.get('/Categories')
-async def get_categories(db: AsyncSession = Depends(get_db)):
+async def fetch_categories_from_db(db: AsyncSession)->list:
     subquery = (
         select(
             models.Product.category,
@@ -20,9 +18,15 @@ async def get_categories(db: AsyncSession = Depends(get_db)):
 
     result = await db.execute(select(subquery.c.category, subquery.c.product_image))
     unique_categories = result.all()
-
     category_info = [{"category": category, "image": image} for category, image in unique_categories]
+    return category_info
 
+
+# sperate beacue of langgrph needs categorics and 
+# langgraph does not call the async funtion cause it's 
+# depends on fastapi cyles.
+@router.get('/Categories')
+async def get_categories(db: AsyncSession = Depends(get_db)):
     return {
-        "Categories": category_info
+        "Categories": await fetch_categories_from_db(db)
     }

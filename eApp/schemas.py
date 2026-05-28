@@ -16,7 +16,12 @@ class UserSignUP(BaseModel):
     username : str 
     email : str 
     password : str 
-    
+
+class LocalSearch(BaseModel):
+    lat:float
+    long:float
+    rad:float
+    categories:list[str] 
     
     
 
