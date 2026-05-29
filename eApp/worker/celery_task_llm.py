@@ -12,9 +12,9 @@ from eApp.redis_setup import redis_sync
 from eApp.database import connection_args
 from langchain_core.messages import AIMessage
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-from eApp.workflows.social_media_workflow import social_media_wkf,WAIT_FOR_LOCATION
-from eApp.workflows.nearby_product_finder_workflow import nearby_product_finder_wkf
+from eApp.workflows.social_media_workflow import social_media_wkf
 from sqlalchemy.ext.asyncio import create_async_engine,async_sessionmaker,AsyncSession
+from eApp.workflows.nearby_product_finder_workflow import nearby_product_finder_wkf,WAIT_FOR_LOCATION
 
 logger = logging.getLogger(__name__)  
 
@@ -112,7 +112,7 @@ async def process_llm_request_internal(user_question: str, checkpoint_id: str, u
     
     
     try:
-        print("-----we are in process llm request internal-----")
+        print("\n\n -----we are in process llm request internal-----\n\n")
         async with session_factory() as db:
             # Check current checkpoint
             is_new_conversation = (checkpoint_id == "")
@@ -185,14 +185,14 @@ async def process_llm_request_internal(user_question: str, checkpoint_id: str, u
                                },
                         version="v2",
                         config=config)
-                    
+                print("last node execution brother")
                 # for handling HIL we need to track the node:
                 last_node = None 
                 current_workflow_interrupts = INTERRUPT_CONFIG.get(workflow_type,{})
 
                 async for event in events:
                     event_type = event["event"]
-
+                    #print(f"event type, {event_type}")
                     # If error occurs
                     if isinstance(event, dict) and event.get("type") == "function_error":
                         logger.error("Function call failed, payload was: %r", event.get("failed_generation"))
@@ -241,9 +241,9 @@ async def process_llm_request_internal(user_question: str, checkpoint_id: str, u
                     
                     # handle interrpt: 
                     elif event_type == "on_chain_stream":
-
+                        print("on chain stream node")
                         # if not key(k) then default will work
-                        chunk = event.get(k='data',default={}).get('chunk',{})
+                        chunk = event.get('data',{}).get('chunk',{})
                         if isinstance(chunk,dict) and "__interrupt__" in chunk:
                             interrupt_info = current_workflow_interrupts.get(last_node)
                             if interrupt_info:
@@ -262,8 +262,8 @@ async def process_llm_request_internal(user_question: str, checkpoint_id: str, u
                                     "checkpoint_id": user_checkpoint_id,
                                     "interrupted_at": last_node
                                 }))
-                        redis_sync.publish(channel_id, json.dumps({"type": "end"}))
-                        return 
+                            redis_sync.publish(channel_id, json.dumps({"type": "end"}))
+                            return 
 
                 
             # Send the end event
@@ -289,6 +289,7 @@ async def process_llm_request_internal(user_question: str, checkpoint_id: str, u
             redis_sync.publish(channel_id, json.dumps({"type": "end"}))
 
     except Exception as e:
+        print(f"error in celery_task_llm.py: \n {e}")
         logger.error(f"Error in Celery task: {e}")
         redis_sync.publish(channel_id, json.dumps({"type": "error", "content": str(e)}))
     finally:
