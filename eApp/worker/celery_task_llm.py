@@ -1,20 +1,19 @@
 import json
 import logging 
-import nest_asyncio 
 from uuid import uuid4
 from eApp import models
 from celery import Celery
 from celery import shared_task
 from eApp.config import CONFIG
+from langgraph.types import Command
 from sqlalchemy import select, func 
-from asgiref.sync import async_to_sync
 from eApp.redis_setup import redis_sync
 from eApp.database import connection_args
 from langchain_core.messages import AIMessage
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from eApp.workflows.social_media_workflow import social_media_wkf
+from eApp.workflows.nearby_product_finder_workflow import nearby_product_finder_wkf
 from sqlalchemy.ext.asyncio import create_async_engine,async_sessionmaker,AsyncSession
-from eApp.workflows.nearby_product_finder_workflow import nearby_product_finder_wkf,WAIT_FOR_LOCATION
 
 logger = logging.getLogger(__name__)  
 
@@ -88,8 +87,7 @@ async def chunking_message(chunk):
         )
 
 # Async processing function
-async def process_llm_request_internal(user_question: str, checkpoint_id: str, user_id: int, channel_id: str,workflow_type:str):
-    
+async def process_llm_request_internal(user_question: str, checkpoint_id: str, user_id: int, channel_id: str,workflow_type:str,resume_data:dict=None):
     """ 
     Problem is that,  1st request processed well, but 2nd request 
     get loop confit, so we can solve this by creating a new database connection 
@@ -114,83 +112,106 @@ async def process_llm_request_internal(user_question: str, checkpoint_id: str, u
     try:
         print("\n\n -----we are in process llm request internal-----\n\n")
         async with session_factory() as db:
-            # Check current checkpoint
+
+            # Check current checkpoint:
             is_new_conversation = (checkpoint_id == "")
+
+            # check any resume request:
+            is_resume = resume_data is not None 
             user_checkpoint_id = str(checkpoint_id) if not is_new_conversation else str(uuid4())
 
             # 1.<--- Conversation title ---->
+            # don't need save the conversation if we want resume the graph
             conversation = None
-            if is_new_conversation:
-                conversation = models.Conversation(
+
+            #  ========== if not resume ==========
+            if not is_resume:
+                # 1. fresh conversation
+                if is_new_conversation:
+                    conversation = models.Conversation(
+                        user_id=user_id,
+                        thread_id=user_checkpoint_id,
+                        title=user_question[:50] + "...." if len(user_question) > 50 else user_question
+                    )
+                    db.add(conversation)
+                    await db.commit()
+                    await db.refresh(conversation)
+                    redis_sync.publish(channel_id, json.dumps({
+                    "type": "checkpoint",
+                    "checkpoint_id": user_checkpoint_id}))
+                # 2. old conversation
+                else:
+                    result = await db.execute(
+                        select(models.Conversation).where(
+                            models.Conversation.thread_id == checkpoint_id
+                        ).where(
+                            models.Conversation.user_id == user_id
+                        )
+                    )
+                    conversation = result.scalar_one_or_none()
+                    if not conversation:
+                        redis_sync.publish(channel_id, json.dumps({"type": "error", "content": "Checkpoint not found"}))
+                        return
+                    conversation.last_updated = func.now()
+                    db.add(conversation)
+                    await db.commit()
+
+
+                # 2. Save User Message
+                user_msg = models.MessageHistory(
                     user_id=user_id,
-                    thread_id=user_checkpoint_id,
-                    title=user_question[:50] + "...." if len(user_question) > 50 else user_question
+                    conversation_id=conversation.id,
+                    thread_id=conversation.thread_id,
+                    message=user_question,
+                    sender_role="human",
                 )
-                db.add(conversation)
+                db.add(user_msg)
                 await db.commit()
-                await db.refresh(conversation)
-            else:
+                logger.info(f"Saved user message for conversation {conversation.id}")
+
+            # ======== if not resume: ====
+            else: 
                 result = await db.execute(
                     select(models.Conversation).where(
-                        models.Conversation.thread_id == checkpoint_id
-                    ).where(
+                        models.Conversation.thread_id == checkpoint_id,
                         models.Conversation.user_id == user_id
                     )
                 )
                 conversation = result.scalar_one_or_none()
-                if not conversation:
-                    redis_sync.publish(channel_id, json.dumps({"type": "error", "content": "Checkpoint not found"}))
-                    return
-                conversation.last_updated = func.now()
-                db.add(conversation)
-                await db.commit()
-
-
-            # 2. Save User Message
-            user_msg = models.MessageHistory(
-                user_id=user_id,
-                conversation_id=conversation.id,
-                thread_id=conversation.thread_id,
-                message=user_question,
-                sender_role="human",
-            )
-            db.add(user_msg)
-            await db.commit()
-            logger.info(f"Saved user message for conversation {conversation.id}")
+ 
 
             # 3. Stream Events
             ai_content = ""
             config = {"configurable": {"thread_id": conversation.thread_id}}
-
-            # Publish checkpoint if new
-            if is_new_conversation:
-                print("pulishing new checkpiont---> for user ")
-                redis_sync.publish(channel_id, json.dumps({"type": "checkpoint", "checkpoint_id": user_checkpoint_id}))
 
             # Stream LangGraph events - This will work because it's inside async context
             string = CONFIG.DATABASE_URL_CELERY_TASK
             async with AsyncPostgresSaver.from_conn_string(string) as memory:
                 if workflow_type == 'social_media_posting':
                     graph = social_media_wkf.compile(checkpointer=memory)
-                    events =  graph.astream_events(
-                    input={"user_question": user_question,"current_user_id":int(user_id)},
-                    version="v2",
-                    config=config)
+                    graph_input = {
+                        "user_question": user_question,
+                        "current_user_id": int(user_id)
+                    }
                 elif workflow_type == 'local_search':
-                    graph = nearby_product_finder_wkf.compile(checkpointer=memory,
-                                                              interrupt_before=[WAIT_FOR_LOCATION])
-                    events =  graph.astream_events(
-                        input={"user_question": user_question,
-                               "current_user_id":int(user_id),
-                               },
-                        version="v2",
-                        config=config)
-                print("last node execution brother")
-                # for handling HIL we need to track the node:
+                    graph = nearby_product_finder_wkf.compile(checkpointer=memory)
+                
+                    # ---------- Resume from HITL-----------------
+                    if is_resume:
+                        print("resuming graph")
+                        graph_input = Command(resume=resume_data)
+                        
+                    else:
+                        graph_input = {
+                                "user_question": user_question,
+                                "current_user_id": int(user_id),
+                            }
+
+                # for handling HITL we need to track the node:
                 last_node = None 
                 current_workflow_interrupts = INTERRUPT_CONFIG.get(workflow_type,{})
 
-                async for event in events:
+                async for event in graph.astream_events(graph_input,config=config,version='v2'):
                     event_type = event["event"]
                     #print(f"event type, {event_type}")
                     # If error occurs
@@ -244,28 +265,18 @@ async def process_llm_request_internal(user_question: str, checkpoint_id: str, u
                         print("on chain stream node")
                         # if not key(k) then default will work
                         chunk = event.get('data',{}).get('chunk',{})
+                        print(f"chunk content: {chunk}")
                         if isinstance(chunk,dict) and "__interrupt__" in chunk:
-                            interrupt_info = current_workflow_interrupts.get(last_node)
-                            if interrupt_info:
-                                redis_sync.publish(
-                                    channel_id,
-                                    json.dumps({
-                                        **interrupt_info,
-                                        "checkpoint_id": user_checkpoint_id,
-                                        "interrupted_at": last_node
-                                    })
-                                )
-                            # flase interrupted:
-                            else:
-                                redis_sync.publish(channel_id, json.dumps({
-                                    "type": "unknown_interrupt",
-                                    "checkpoint_id": user_checkpoint_id,
-                                    "interrupted_at": last_node
-                                }))
+                            interrupts = chunk["__interrupt__"]
+                            interrupt_value = interrupts[0].value if interrupts else {}
+                            print(f"publishing interrupt: {interrupt_value}")
+                            redis_sync.publish(channel_id, json.dumps({
+                                **interrupt_value,
+                                "checkpoint_id": user_checkpoint_id if is_new_conversation else checkpoint_id,
+                            }))
                             redis_sync.publish(channel_id, json.dumps({"type": "end"}))
                             return 
 
-                
             # Send the end event
             if ai_content:
                 ai_msg = models.MessageHistory(
@@ -319,7 +330,7 @@ import selectors
 from eApp.redis_setup import redis_async
 
 @celery_app_llm.task(bind=True, name="app.worker.celery_task_llm.process_llm_request_task")
-def process_llm_request_task(self, user_question: str, checkpoint_id: str, user_id: int, channel_id: str,workflow_type:str):
+def process_llm_request_task(self, user_question: str, checkpoint_id: str, user_id: int, channel_id: str,workflow_type:str,resume_data:dict=None):
     if sys.platform == 'win32':
         loop = asyncio.SelectorEventLoop(selectors.SelectSelector())
     else:
@@ -330,7 +341,7 @@ def process_llm_request_task(self, user_question: str, checkpoint_id: str, user_
     try:
         #loop = asyncio.new_event_loop()
         return loop.run_until_complete(
-            process_llm_request_internal(user_question, checkpoint_id, user_id, channel_id,workflow_type)
+            process_llm_request_internal(user_question, checkpoint_id, user_id, channel_id,workflow_type,resume_data)
         )
     except Exception as e:
         print(f"Error in Celery task: {e}")

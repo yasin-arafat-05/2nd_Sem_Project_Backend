@@ -98,6 +98,7 @@ class InputMessage(BaseModel):
     # 3. casual_talk_about_product_review_workflow
     #
     workflow_type : str
+    resume_data: dict | None = None 
 
 
 

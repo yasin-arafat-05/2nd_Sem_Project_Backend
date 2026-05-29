@@ -30,7 +30,7 @@ MAX_CONCURRENT = 2
 
 @router.post("/chat")
 async def chat_stream(input_data: InputMessage, request: Request, user = Depends(get_current_user), db = Depends(get_db)):
-    if not input_data.message:
+    if not input_data.message and not input_data.resume_data:
         raise HTTPException(status_code=400, detail="Message is required")
     
     user_message = input_data.message
@@ -39,7 +39,8 @@ async def chat_stream(input_data: InputMessage, request: Request, user = Depends
     free_trial = user.free_count
     paid_ = user.paid_status
     workflow_type = input_data.workflow_type
-    
+    resume_data = input_data.resume_data
+
     #print(f"User: {user}, Input: {input_data}")
     
     if free_trial > 3 and not paid_:
@@ -57,7 +58,7 @@ async def chat_stream(input_data: InputMessage, request: Request, user = Depends
 
     # <------- Call the Celery task id for fetch api-key------------->
     task = process_llm_request_task.apply_async(
-        args=(user_message, checkpoint_id, user_id, channel_id,workflow_type)
+        args=(user_message, checkpoint_id, user_id, channel_id,workflow_type,resume_data)
     )
 
 

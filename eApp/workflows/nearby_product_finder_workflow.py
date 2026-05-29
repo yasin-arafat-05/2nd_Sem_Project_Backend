@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from eApp.config import CONFIG
 from typing import List,Optional
 from langchain_groq import ChatGroq
+from langgraph.types import interrupt
 from eApp.database import asyncSession
 from langgraph.graph import StateGraph,START,END
 from langchain_core.prompts import ChatPromptTemplate
@@ -137,20 +138,18 @@ def clarify_requirements(state:AgentState):
 async def get_location_node(state: AgentState):
     if state.user_lat is not None and state.user_long is not None:
         return state
+    
     print("Agent needs location. Sending request to Frontend...")
-    state.waiting_for_location = True
-    return state
+    location_data = interrupt({
+        'type': 'request_location',
+        'message': 'Live Location Need'
+    })
+    return {
+        "user_lat": location_data["user_lat"],
+        "user_long": location_data["user_long"],
+        "waiting_for_location": False
+    }
 
-def check_location_condition(state: AgentState):
-    if state.waiting_for_location:
-        return "ask_human" 
-    else:
-        return "fetch_categories"
-
-def wait_for_human_node(state: AgentState):
-    print("--- 📍 Location Received from Human! Resuming Graph ---")
-    state.waiting_for_location = False 
-    return state
 
 async def fetch_categories(state:AgentState):
     try:
@@ -216,7 +215,7 @@ def categories_router(state:AgentState):
 async def categories_clarify(state: AgentState):
     try:
         print("--- CATEGORY CLARIFICATION NODE ---")
-    
+
         category_list = state.matches_categories
         system_prompt = (
             "You are a helpful customer support agent for a hyperlocal e-commerce platform.\n"
@@ -307,7 +306,6 @@ async def fetch_prod_info(state: AgentState):
 nearby_product_finder_wkf = StateGraph(state_schema=AgentState)
 ANALYZE_REQUIREMENTS = "Analyze_Requirements"
 CLARIFY_REQUIREMENTS = "Clarify_Requirements"
-WAIT_FOR_LOCATION = "Wait_For_Location"
 CATEGORIES_CLARIFY = "Categories_Clarify"
 GET_LOCATION = "Get_Location"
 FETCH_CATEGORIES = "Fetch_Categories"
@@ -318,7 +316,6 @@ FETCH_PROD_INFO = "Fetch_Prod_Info"
 nearby_product_finder_wkf.add_node(ANALYZE_REQUIREMENTS,analysis_requirements)
 nearby_product_finder_wkf.add_node(CLARIFY_REQUIREMENTS,clarify_requirements)
 nearby_product_finder_wkf.add_node(GET_LOCATION, get_location_node)
-nearby_product_finder_wkf.add_node(WAIT_FOR_LOCATION, wait_for_human_node)
 nearby_product_finder_wkf.add_node(FETCH_CATEGORIES,fetch_categories)
 nearby_product_finder_wkf.add_node(FETCH_PROD_INFO,fetch_prod_info)
 nearby_product_finder_wkf.add_node(CATEGORIES_CLARIFY,categories_clarify)
@@ -334,15 +331,7 @@ nearby_product_finder_wkf.add_conditional_edges(
     }
 )
 nearby_product_finder_wkf.add_edge(CLARIFY_REQUIREMENTS,END)
-nearby_product_finder_wkf.add_conditional_edges(
-    GET_LOCATION,
-    check_location_condition,
-    {
-        "ask_human": WAIT_FOR_LOCATION, 
-        "fetch_categories": FETCH_CATEGORIES
-    }
-)
-nearby_product_finder_wkf.add_edge(WAIT_FOR_LOCATION, FETCH_CATEGORIES)
+nearby_product_finder_wkf.add_edge(GET_LOCATION, FETCH_CATEGORIES)
 nearby_product_finder_wkf.add_conditional_edges(
     FETCH_CATEGORIES,
     categories_router,{
@@ -354,15 +343,17 @@ nearby_product_finder_wkf.add_edge(CATEGORIES_CLARIFY,END)
 nearby_product_finder_wkf.add_edge(FETCH_PROD_INFO,END)
 
 
+# for testing the graph: 
 if __name__ == "__main__":
     import asyncio 
     memory = InMemorySaver()
     agnet_state = AgentState(
         user_question="Hi! i want to buy a pc. could u can help me?",
         current_user_id=1,
+        user_lat= 24.7632725,
+        user_long=89.8870205
     )
-    app = nearby_product_finder_wkf.compile(memory,
-                                            interrupt_before=[WAIT_FOR_LOCATION])
+    app = nearby_product_finder_wkf.compile(memory)
     
     # save the workflow graph:
     # grph = app.get_graph().draw_mermaid_png()
@@ -370,11 +361,12 @@ if __name__ == "__main__":
     #         f.write(grph)
     # print(" Success! Your graph image has been saved as 'graph_pipeline.png'")
     config = {"configurable": {"thread_id": "test_thread_123"}}
-    async def main():
-        print("\n--- Token by Token Streaming ---")
-        async for event in app.astream_events(agnet_state, config=config, version="v2"):
-            print(event)
-    asyncio.run(main())
+    # async def main():
+    #     print("\n--- Token by Token Streaming ---")
+    #     async for event in app.astream_events(agnet_state, config=config, version="v2"):
+    #         print(event)
+    # asyncio.run(main())
+    print(asyncio.run(app.ainvoke(agnet_state,config=config)))
 
     
     
