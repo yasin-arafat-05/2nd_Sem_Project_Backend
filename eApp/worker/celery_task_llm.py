@@ -12,7 +12,7 @@ from eApp.redis_setup import redis_sync
 from eApp.database import connection_args
 from langchain_core.messages import AIMessage
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-from eApp.workflows.social_media_workflow import social_media_wkf
+from eApp.workflows.social_media_workflow import social_media_wkf,WAIT_FOR_LOCATION
 from eApp.workflows.nearby_product_finder_workflow import nearby_product_finder_wkf
 from sqlalchemy.ext.asyncio import create_async_engine,async_sessionmaker,AsyncSession
 
@@ -55,6 +55,28 @@ celery_app_llm.conf.update(
     }
 )
 
+# Human in the loop: control:
+# ===== INTERRUPT CONFIGURATION MAP =====
+INTERRUPT_CONFIG = {
+    "local_search": {
+        "Get_Location": {
+            "type": "request_location",
+            "message": " Live Location Need From User"
+        },
+        # In future multiple interrupt on same workflow will be hanle like this:
+        # "Wait_For_Payment": {
+        #     "type": "request_payment",
+        #     "message": "Payment confirm "
+        # },
+    },
+    # In future another interrupt in another workflow:
+    # "social_media_posting": {
+    #     "Wait_For_Approval": {
+    #         "type": "request_approval",
+    #         "message": "Post approve "
+    #     },
+    # },
+}
 
 # Async version of chunking_message
 async def chunking_message(chunk):
@@ -150,20 +172,39 @@ async def process_llm_request_internal(user_question: str, checkpoint_id: str, u
             async with AsyncPostgresSaver.from_conn_string(string) as memory:
                 if workflow_type == 'social_media_posting':
                     graph = social_media_wkf.compile(checkpointer=memory)
-                elif workflow_type == 'local_search':
-                    graph = nearby_product_finder_wkf.compile(checkpointer=memory)
-                events =  graph.astream_events(
+                    events =  graph.astream_events(
                     input={"user_question": user_question,"current_user_id":int(user_id)},
                     version="v2",
-                    config=config
-                )
+                    config=config)
+                elif workflow_type == 'local_search':
+                    graph = nearby_product_finder_wkf.compile(checkpointer=memory,
+                                                              interrupt_before=[WAIT_FOR_LOCATION])
+                    events =  graph.astream_events(
+                        input={"user_question": user_question,
+                               "current_user_id":int(user_id),
+                               },
+                        version="v2",
+                        config=config)
+                    
+                # for handling HIL we need to track the node:
+                last_node = None 
+                current_workflow_interrupts = INTERRUPT_CONFIG.get(workflow_type,{})
+
                 async for event in events:
                     event_type = event["event"]
+
+                    # If error occurs
                     if isinstance(event, dict) and event.get("type") == "function_error":
                         logger.error("Function call failed, payload was: %r", event.get("failed_generation"))
                         redis_sync.publish(channel_id, json.dumps({"type": "error", "content": "Function call failed"}))
                         await db.rollback()
                         return
+                    
+                    # Node Track:
+                    if event_type == "on_chain_end":
+                        node = event.get("metadata", {}).get("langgraph_node")
+                        if node:
+                            last_node = node 
 
                     # Chat Model Output
                     if event_type == "on_chat_model_stream":
@@ -172,7 +213,7 @@ async def process_llm_request_internal(user_question: str, checkpoint_id: str, u
                         safe_content = json.dumps(chunk_content)[1:-1]
                         redis_sync.publish(channel_id, json.dumps({"type": "content", "content": safe_content}))
 
-                        # Delayed Event Stream
+                    # Delayed Event Stream (Each Node Name)
                     elif event_type == "on_chain_start":
                         node_name = event["name"]
                         if node_name == "Analyze_Requirements":
@@ -197,6 +238,33 @@ async def process_llm_request_internal(user_question: str, checkpoint_id: str, u
                             redis_sync.publish(channel_id, json.dumps({"type": "quality_check"}))
                         else:
                             redis_sync.publish(channel_id, json.dumps({"type": "processing", "node": node_name}))
+                    
+                    # handle interrpt: 
+                    elif event_type == "on_chain_stream":
+
+                        # if not key(k) then default will work
+                        chunk = event.get(k='data',default={}).get('chunk',{})
+                        if isinstance(chunk,dict) and "__interrupt__" in chunk:
+                            interrupt_info = current_workflow_interrupts.get(last_node)
+                            if interrupt_info:
+                                redis_sync.publish(
+                                    channel_id,
+                                    json.dumps({
+                                        **interrupt_info,
+                                        "checkpoint_id": user_checkpoint_id,
+                                        "interrupted_at": last_node
+                                    })
+                                )
+                            # flase interrupted:
+                            else:
+                                redis_sync.publish(channel_id, json.dumps({
+                                    "type": "unknown_interrupt",
+                                    "checkpoint_id": user_checkpoint_id,
+                                    "interrupted_at": last_node
+                                }))
+                        redis_sync.publish(channel_id, json.dumps({"type": "end"}))
+                        return 
+
                 
             # Send the end event
             if ai_content:

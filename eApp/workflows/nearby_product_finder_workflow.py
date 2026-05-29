@@ -7,6 +7,7 @@ from langchain_groq import ChatGroq
 from eApp.database import asyncSession
 from langgraph.graph import StateGraph,START,END
 from langchain_core.prompts import ChatPromptTemplate
+from langgraph.checkpoint.memory import InMemorySaver
 from langchain_core.output_parsers import StrOutputParser
 from eApp.routes.categories import fetch_categories_from_db
 from eApp.routes.local_search import local_search_llm_context
@@ -28,8 +29,9 @@ class AgentState(BaseModel):
     categories_match_or_not: bool = False 
     matches_categories : List[str] = []
     fetch_product_info : List[str] = []
-    user_lat : float 
-    user_long : float 
+    user_lat : float | None = None
+    user_long : float | None = None 
+    waiting_for_location: bool = False 
 
 
 
@@ -130,7 +132,25 @@ def clarify_requirements(state:AgentState):
     except Exception as e:
         print(f"find exception while in clarify_requirements nodes: {e}") 
         return state 
+    
 
+async def get_location_node(state: AgentState):
+    if state.user_lat is not None and state.user_long is not None:
+        return state
+    print("Agent needs location. Sending request to Frontend...")
+    state.waiting_for_location = True
+    return state
+
+def check_location_condition(state: AgentState):
+    if state.waiting_for_location:
+        return "ask_human" 
+    else:
+        return "fetch_categories"
+
+def wait_for_human_node(state: AgentState):
+    print("--- 📍 Location Received from Human! Resuming Graph ---")
+    state.waiting_for_location = False 
+    return state
 
 async def fetch_categories(state:AgentState):
     try:
@@ -191,7 +211,6 @@ def categories_router(state:AgentState):
         return 'proceed' 
     else:
         return 'clarify'
-
 
 
 async def categories_clarify(state: AgentState):
@@ -259,7 +278,7 @@ async def fetch_prod_info(state: AgentState):
             f"User's original question: \"{state.user_question}\"\n"
             f"Target product/category: \"{state.product_categry_des}\"\n\n"
             f"Available Products Context (Found within 5km):\n{fetch_prod_information}\n\n"
-            "Task: Based on the products context above, write a polite and concise response to the user. "
+            "Task: Based on the products context above, write a polite and concise response to the user."
             "List the best options available for them."
         )
 
@@ -288,30 +307,42 @@ async def fetch_prod_info(state: AgentState):
 nearby_product_finder_wkf = StateGraph(state_schema=AgentState)
 ANALYZE_REQUIREMENTS = "Analyze_Requirements"
 CLARIFY_REQUIREMENTS = "Clarify_Requirements"
+WAIT_FOR_LOCATION = "Wait_For_Location"
 CATEGORIES_CLARIFY = "Categories_Clarify"
+GET_LOCATION = "Get_Location"
 FETCH_CATEGORIES = "Fetch_Categories"
 FETCH_PROD_INFO = "Fetch_Prod_Info"
+
 
 # add nodes:
 nearby_product_finder_wkf.add_node(ANALYZE_REQUIREMENTS,analysis_requirements)
 nearby_product_finder_wkf.add_node(CLARIFY_REQUIREMENTS,clarify_requirements)
+nearby_product_finder_wkf.add_node(GET_LOCATION, get_location_node)
+nearby_product_finder_wkf.add_node(WAIT_FOR_LOCATION, wait_for_human_node)
 nearby_product_finder_wkf.add_node(FETCH_CATEGORIES,fetch_categories)
 nearby_product_finder_wkf.add_node(FETCH_PROD_INFO,fetch_prod_info)
 nearby_product_finder_wkf.add_node(CATEGORIES_CLARIFY,categories_clarify)
 
+ 
 #edges:
 nearby_product_finder_wkf.set_entry_point(ANALYZE_REQUIREMENTS)
-
 nearby_product_finder_wkf.add_conditional_edges(
     ANALYZE_REQUIREMENTS,
     router,{
-        "proceed":FETCH_CATEGORIES,
+        "proceed":GET_LOCATION,
         "clarify":CLARIFY_REQUIREMENTS,
     }
 )
-
 nearby_product_finder_wkf.add_edge(CLARIFY_REQUIREMENTS,END)
-
+nearby_product_finder_wkf.add_conditional_edges(
+    GET_LOCATION,
+    check_location_condition,
+    {
+        "ask_human": WAIT_FOR_LOCATION, 
+        "fetch_categories": FETCH_CATEGORIES
+    }
+)
+nearby_product_finder_wkf.add_edge(WAIT_FOR_LOCATION, FETCH_CATEGORIES)
 nearby_product_finder_wkf.add_conditional_edges(
     FETCH_CATEGORIES,
     categories_router,{
@@ -319,27 +350,31 @@ nearby_product_finder_wkf.add_conditional_edges(
         "clarify": CATEGORIES_CLARIFY
     }
 )
-
 nearby_product_finder_wkf.add_edge(CATEGORIES_CLARIFY,END)
 nearby_product_finder_wkf.add_edge(FETCH_PROD_INFO,END)
 
 
 if __name__ == "__main__":
     import asyncio 
+    memory = InMemorySaver()
     agnet_state = AgentState(
         user_question="Hi! i want to buy a pc. could u can help me?",
         current_user_id=1,
-        user_lat = 24.7632709,
-        user_long  = 89.8870121
     )
-    app = nearby_product_finder_wkf.compile()
+    app = nearby_product_finder_wkf.compile(memory,
+                                            interrupt_before=[WAIT_FOR_LOCATION])
     
     # save the workflow graph:
     # grph = app.get_graph().draw_mermaid_png()
     # with open("eApp/workflows/diagram/graph_pipeline.png", "wb") as f:
     #         f.write(grph)
     # print(" Success! Your graph image has been saved as 'graph_pipeline.png'")
-    final_state = asyncio.run(app.ainvoke(agnet_state))
-    print(final_state)
+    config = {"configurable": {"thread_id": "test_thread_123"}}
+    async def main():
+        print("\n--- Token by Token Streaming ---")
+        async for event in app.astream_events(agnet_state, config=config, version="v2"):
+            print(event)
+    asyncio.run(main())
+
     
     
