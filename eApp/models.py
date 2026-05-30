@@ -184,6 +184,7 @@ class MessageHistory(Base):
     )
     
     id = Column(Integer, primary_key=True, index=True)
+    workflow_type = Column(String(150),server_default="social_media_posting", nullable=False)
     user_id = Column(Integer, ForeignKey('users.id', ondelete="CASCADE"), nullable=False)
     conversation_id = Column(Integer, ForeignKey('conversations.id', ondelete="CASCADE"), nullable=False)
     thread_id = Column(Text, nullable=False)
