@@ -160,6 +160,7 @@ async def process_llm_request_internal(user_question: str, checkpoint_id: str, u
                 # 2. Save User Message
                 user_msg = models.MessageHistory(
                     user_id=user_id,
+                    workflow_type=workflow_type,
                     conversation_id=conversation.id,
                     thread_id=conversation.thread_id,
                     message=user_question,
@@ -281,6 +282,7 @@ async def process_llm_request_internal(user_question: str, checkpoint_id: str, u
             if ai_content:
                 ai_msg = models.MessageHistory(
                     user_id=user_id,
+                    workflow_type=workflow_type,
                     conversation_id=conversation.id,
                     thread_id=conversation.thread_id,
                     message=ai_content,

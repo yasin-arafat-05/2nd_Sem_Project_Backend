@@ -28,11 +28,13 @@ async def chat_history(conversation_id:int, user: schemas.User = Depends(get_cur
     for msg in messages:
         chat_messages.append({
             'id': msg.id,
+            'workflow_type':msg.workflow_type,
             'conversation_id': msg.conversation_id,
             'thread_id': msg.thread_id,
             'message': msg.message,
             'sender_role': msg.sender_role,
             'created_at': msg.created_at
+
         })
     return chat_messages
 
