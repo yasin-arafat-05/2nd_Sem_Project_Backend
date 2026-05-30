@@ -1,13 +1,33 @@
+from eApp.config import CONFIG
 from eApp import models, schemas
 from sqlalchemy import select
+from hashids import Hashids
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import APIRouter, Depends, HTTPException, status
 from eApp.database import get_db
 from eApp.passHasing import get_current_user
 
 router = APIRouter(
-    tags=['Profile']
+    tags=['Profile']    
 )
+
+SECRET_SALT = CONFIG.SECRET_KEY
+PREFIX = "Galacti_"
+hashids = Hashids(salt=SECRET_SALT, min_length=8)
+
+def encrypt_product_id(product_id: int) -> str:
+    hashed_str = hashids.encode(product_id)
+    return f"{PREFIX}{hashed_str}"
+
+def decrypt_product_id(token_str: str) -> int:
+    if not token_str.startswith(PREFIX):
+        raise ValueError("Invalid Token Format! Must start with 'Galacti_'.")
+    #remove the prefix-part
+    hashed_part = token_str.replace(PREFIX, "")
+    decoded = hashids.decode(hashed_part)
+    if not decoded:
+        raise ValueError("Invalid Product Token!")
+    return decoded[0]
 
 
 @router.post("/user/me")
@@ -43,7 +63,7 @@ async def user_login(user: schemas.User = Depends(get_current_user), db: AsyncSe
         },
         "User All Product": [{
             "id" : product.id,
-            "chatbot_product_id": product.chatbot_product_id,  # ID for LLM/chatbot integration
+            "chatbot_product_id": encrypt_product_id(product.id),
             "Product Name": product.name,
             "Category": product.category,
             "Original Price": float(product.original_price),

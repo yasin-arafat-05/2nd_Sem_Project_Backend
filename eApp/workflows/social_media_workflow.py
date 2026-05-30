@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from asgiref.sync import async_to_sync
 from eApp.schemas import FacebookTextPost
 from typing import Literal, List, Dict, Any, Union
+from langgraph.checkpoint.memory import InMemorySaver
 
 
 from langchain_groq import ChatGroq
@@ -692,3 +693,20 @@ social_media_wkf.add_edge(CREATE_CONTENT, QUALITY_CHECK)
 social_media_wkf.add_edge(QUALITY_CHECK, POST_CONTENT)
 social_media_wkf.add_edge(POST_CONTENT,FINAL_USER_RESULT)
 social_media_wkf.add_edge(FINAL_USER_RESULT, END)
+
+
+# =================== Check the the workflow ===================
+if __name__ == "__main__":
+    import asyncio 
+    memory = InMemorySaver()
+    agnet_state = AgentState(
+        user_question = "i want to post about cricket on facebook",
+        current_user_id  = 1  
+    )
+    app = social_media_wkf.compile(memory)
+    # save the workflow graph:
+    grph = app.get_graph().draw_mermaid_png()
+    with open("eApp/workflows/diagram/graph_social_media.png", "wb") as f:
+            f.write(grph)
+    print(" Success! Your graph image has been saved as 'graph_social_media.png'")
+

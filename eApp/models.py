@@ -69,7 +69,7 @@ class Product(Base):
     business_id = Column(Integer,ForeignKey('business.id'))
     
     # For chatbot/social media integration - unique ID for each product
-    chatbot_product_id = Column(String(100),nullable=True,unique=True,index=True)
+    # chatbot_product_id = Column(String(100),nullable=True,unique=True,index=True)
 
     #many to one relationship with (Business)
     busn_rel = relationship("Business",back_populates="prd")

@@ -356,17 +356,17 @@ if __name__ == "__main__":
     app = nearby_product_finder_wkf.compile(memory)
     
     # save the workflow graph:
-    # grph = app.get_graph().draw_mermaid_png()
-    # with open("eApp/workflows/diagram/graph_pipeline.png", "wb") as f:
-    #         f.write(grph)
-    # print(" Success! Your graph image has been saved as 'graph_pipeline.png'")
-    config = {"configurable": {"thread_id": "test_thread_123"}}
+    grph = app.get_graph().draw_mermaid_png()
+    with open("eApp/workflows/diagram/graph_local_search.png", "wb") as f:
+            f.write(grph)
+    print(" Success! Your graph image has been saved as 'graph_local_search.png'")
+    # config = {"configurable": {"thread_id": "test_thread_123"}}
     # async def main():
     #     print("\n--- Token by Token Streaming ---")
     #     async for event in app.astream_events(agnet_state, config=config, version="v2"):
     #         print(event)
     # asyncio.run(main())
-    print(asyncio.run(app.ainvoke(agnet_state,config=config)))
+    # print(asyncio.run(app.ainvoke(agnet_state,config=config)))
 
     
     
