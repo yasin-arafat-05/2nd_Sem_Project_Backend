@@ -55,21 +55,38 @@ async def get_all_product(db: AsyncSession = Depends(get_db)):
     return all_product
 
 #------------------------------Get A the Product information---------------------------------
-@router.get("/get/single/product/{id}")
-async def get_a_single_product(id: int, db: AsyncSession = Depends(get_db)):
+async def single_product_info_for_llms(db: AsyncSession,id):
     result = await db.execute(select(models.Product).where(models.Product.id == id))
     product_with_business = result.scalar_one_or_none()
-
     if product_with_business:
         return {
             "Product Information": {
                 "id": product_with_business.id,
-                "name": product_with_business.name,
+                "product_name": product_with_business.name,
+                "product_details" : product_with_business.product_details,
+                "original_price" : product_with_business.original_price,
+                "new_price" : product_with_business.new_price,
+                "percentage_discount" : product_with_business.percentage_discount,
+                "offer_expiration_date" : product_with_business.offer_expiration_date,
+                "product_image" :  product_with_business.product_image
             },
 
         }
     else:
         raise HTTPException(status_code=404, detail="Product not found")
+    
+
+@router.get("/get/single/product/{id}")
+async def get_a_single_product(id: int, db: AsyncSession = Depends(get_db)):
+    product_with_business = await single_product_info_for_llms(db,id)
+    info = product_with_business["Product Information"]
+    return {
+            "Product Information": {
+                "id": info.id,
+                "name": info.name,
+            }
+        }
+        
 
 #--------------------------------------Delete A the Product --------------------------
 @router.delete("/delete/product/{id}")

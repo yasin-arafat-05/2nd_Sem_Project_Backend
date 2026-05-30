@@ -79,13 +79,13 @@ async def save_social_media_tokens(
             select(SocialMediaToken).where(SocialMediaToken.user_id == user.id)
         )
         token_record = result.scalar_one_or_none()
-        expires_in_one_hour = datetime.datetime.now(datetime.timezone.utc) + timedelta(hours=1)
+        expires_in_one_hour = datetime.datetime.now(datetime.timezone.utc) + timedelta(days=59)
         # if token exist: Update existing tokens
         if token_record:
             if token_data.facebook is not None:
                 token_record.facebook = token_data.facebook
             if token_data.instagram is not None:
-                token_record.instragram = token_data.instagram  
+                token_record.instagram = token_data.instagram  
             if token_data.linkedin is not None:
                 token_record.linkedin = token_data.linkedin
             if token_data.expires_at is not None:
@@ -96,13 +96,14 @@ async def save_social_media_tokens(
             token_record = SocialMediaToken(
                 user_id=user.id,
                 facebook=token_data.facebook,
-                instragram=token_data.instagram,
+                instagram=token_data.instagram,
                 linkedin=token_data.linkedin,
                 expires_at=expires_in_one_hour
             )
             db.add(token_record)
         
         await db.commit()
+        await db.refresh(token_record)
         return token_record
             
     except Exception as e:

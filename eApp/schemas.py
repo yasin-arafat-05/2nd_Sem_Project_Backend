@@ -111,6 +111,7 @@ class SocialMediaTokenBase(BaseModel):
     instagram: Optional[str] = None
     linkedin: Optional[str] = None
     expires_at: Optional[datetime] = None
+
 class TokenCreate(SocialMediaTokenBase):
     pass
 
@@ -120,7 +121,7 @@ class TokenUpdate(SocialMediaTokenBase):
 
 
 class TokenResponse(SocialMediaTokenBase):
-    id: int
+    id: Optional[int] = None
     
     class Config:
         from_attributes = True
