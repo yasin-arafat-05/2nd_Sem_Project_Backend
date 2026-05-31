@@ -501,10 +501,18 @@ def create_social_media_content(state: AgentState) -> AgentState:
     try:
         platform_config = state.platform_specific_requirements
         
+        product_info = state.product_details.get('Product Information', {}) if state.product_details else {}
+        product_name = product_info.get('product_name', '')
+        product_description = product_info.get('product_details', '')
+        original_price = product_info.get('original_price', '')
+        new_price = product_info.get('new_price', '')
+        discount = product_info.get('percentage_discount', '')
+        expiry = product_info.get('offer_expiration_date', '')
+        print(product_description,product_info,product_name)
         system_message = SystemMessage(content=f"""
         You are a professional social media content creator for {state.platform}.
         
-        YOUR JOB: Create engaging social media content about WHATEVER TOPIC the user requests.
+        YOUR JOB: Create engaging social media content about the PRODUCT provided below.
         
         Platform Requirements:
         - Max length: {platform_config['max_length']} characters  
@@ -513,21 +521,26 @@ def create_social_media_content(state: AgentState) -> AgentState:
         - Call to action: {platform_config['call_to_action']}
         
         RULES:
-        1. Create content about EXACTLY what the user asks for
-        2. Use the research information to make it accurate 
-        3. Make it engaging and platform-appropriate
-        4. Include relevant hashtags for THAT SPECIFIC TOPIC
-        5. No image/video placeholders
-        6. No event registrations or specific dates
-        
-        Be creative but stay on-topic!
+        1. ALWAYS use the REAL product name, NOT any code like 'Galacti_XXXX'
+        2. Highlight the product's key features and benefits
+        3. If there's a discount, mention it to create urgency
+        4. Make it engaging and platform-appropriate
+        5. Include relevant hashtags for the product
+        6. No image/video placeholders
         """)
         
         human_message = HumanMessage(content=f"""
-        CREATE A {state.platform.upper()} POST ABOUT THIS TOPIC:
-        "{state.user_question}"
+        CREATE A {state.platform.upper()} POST FOR THIS PRODUCT:
         
-        RESEARCH INFORMATION:
+        🛍️ PRODUCT DETAILS:
+        - Product Name: {product_name}
+        - Description: {product_description}
+        - Original Price: ${original_price}
+        - Sale Price: ${new_price}
+        - Discount: {discount}%
+        - Offer Expires: {expiry}
+        
+        ADDITIONAL RESEARCH:
         {state.accumulated_info}
         
         CONTEXT:
@@ -535,30 +548,25 @@ def create_social_media_content(state: AgentState) -> AgentState:
         - Content type: {state.content_type}
         - Call to action needed: {platform_config['call_to_action']}
         
-        CREATE CONTENT THAT:
-        - Is about "{state.user_question}"
-        - Uses the research to be accurate
-        - Is engaging for {state.platform} users
-        - Has relevant hashtags for this topic
-        - Encourages interaction if needed
-        
+        IMPORTANT: Use "{product_name}" as the product name. NEVER use any code like 'Galacti_'.
         Return only the final post text.
         """)
+        
         
         prompt = ChatPromptTemplate.from_messages([system_message, human_message])
         llm = ChatGroq(model=model_name)
         chain = prompt | llm | StrOutputParser()
         
         content = chain.invoke({})
-        
+        print('\n\n\n\n\n\n')
         print("<-----------------Generated content--------------------->")
         print(content)
         state.generated_content = content
         state.current_step = "content_created"
         
-        print(f"Topic: {state.user_question}")
-        print(f"Platform: {state.platform}")
-        print(f"Content length: {len(content)}")
+        # print(f"Topic: {state.user_question}")
+        # print(f"Platform: {state.platform}")
+        # print(f"Content length: {len(content)}")
         return state
         
     except Exception as e:

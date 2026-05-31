@@ -3,10 +3,11 @@ import logging
 from uuid import uuid4
 from eApp import models
 from celery import Celery
-from celery import shared_task
 from eApp.config import CONFIG
+from celery import shared_task
 from langgraph.types import Command
 from sqlalchemy import select, func 
+from sqlalchemy.pool import NullPool
 from eApp.redis_setup import redis_sync
 from eApp.database import connection_args
 from langchain_core.messages import AIMessage
@@ -96,6 +97,7 @@ async def process_llm_request_internal(user_question: str, checkpoint_id: str, u
     engine = create_async_engine(
         url=CONFIG.DATABASE_URL,
         pool_size=5,
+        pull_class=NullPool,
         max_overflow=2,
         pool_pre_ping=True,
         echo=False,
@@ -266,7 +268,7 @@ async def process_llm_request_internal(user_question: str, checkpoint_id: str, u
                         print("on chain stream node")
                         # if not key(k) then default will work
                         chunk = event.get('data',{}).get('chunk',{})
-                        print(f"chunk content: {chunk}")
+                        # print(f"chunk content: {chunk}")
                         if isinstance(chunk,dict) and "__interrupt__" in chunk:
                             interrupts = chunk["__interrupt__"]
                             interrupt_value = interrupts[0].value if interrupts else {}
