@@ -97,7 +97,6 @@ async def process_llm_request_internal(user_question: str, checkpoint_id: str, u
     engine = create_async_engine(
         url=CONFIG.DATABASE_URL,
         pool_size=5,
-        pull_class=NullPool,
         max_overflow=2,
         pool_pre_ping=True,
         echo=False,

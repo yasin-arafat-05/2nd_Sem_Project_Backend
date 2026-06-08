@@ -1,7 +1,7 @@
-from datetime import datetime
 from sqlalchemy import text
 from eApp.database import Base
 from sqlalchemy.sql import func
+from datetime import datetime,timezone
 from sqlalchemy.orm import relationship
 from sqlalchemy import Column,Integer,Boolean,ForeignKey,String,Text,Numeric,DateTime,Index,Float
 
@@ -74,6 +74,24 @@ class Product(Base):
     #many to one relationship with (Business)
     busn_rel = relationship("Business",back_populates="prd")
 
+    # product_review_rel = relationship("ProductReview",cascade="all, delete-orphan")
+
+# class ProductReview(Base):
+#     __tablename__ = "product_review"
+#     __table_args__ = (
+#         Index("product_review_idx",'product_id','create_at'),
+#     )
+#     id = Column(Integer,primary_key=True,index=True)
+#     product_id = Column(Integer,ForeignKey("products.id"))
+#     comment = Column(Text,nullable=False)
+#     rating = Column(Integer,nullable=False)
+#     created_at = Column(DateTime(timezone=True),server_default=func.now())
+#     updated_at = Column(DateTime,default=timezone.utc,onupdate=timezone.utc)
+
+#     product_rel = relationship("Product",back_populates="product_review")
+#     user = relationship("User")
+    
+
 class SocialMediaToken(Base):
     __tablename__ = "social_media_tokens"
     id = Column(Integer,primary_key=True,index=True)
@@ -89,13 +107,11 @@ class SocialMediaToken(Base):
 
 
 # ==================== Subscription & Payment Models ====================
-
 class Subscription(Base):
     __tablename__ = "subscriptions"
     __table_args__ = (
         Index("idx_active_subscriptions",'status','subscription_expires_at'),
     )
-    
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey('users.id', ondelete="CASCADE"), nullable=False, index=True)
     currency = Column(String(10), default='dollar')
